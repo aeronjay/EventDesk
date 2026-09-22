@@ -1,5 +1,9 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react'
 
 export default function Auth() {
   const [email, setEmail] = useState('')
@@ -19,39 +23,88 @@ export default function Auth() {
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: '100px auto', padding: 20 }}>
-      <h1>Login</h1>
-      <form onSubmit={handleLogin}>
-        <div style={{ marginBottom: 12 }}>
-          <label htmlFor="email">Email</label>
-          <br />
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ width: '100%', padding: 8 }}
-          />
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-[400px]">
+        {/* Brand Header */}
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary">
+            <span className="text-2xl font-bold text-primary-foreground">Q</span>
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            Sign in to QSolicit
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Enter your credentials to access your account
+          </p>
         </div>
-        <div style={{ marginBottom: 12 }}>
-          <label htmlFor="password">Password</label>
-          <br />
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-            style={{ width: '100%', padding: 8 }}
-          />
+
+        {/* Login Card */}
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="auth-email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                <Input
+                  id="auth-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="pl-8"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="auth-password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                <Input
+                  id="auth-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="pl-8"
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+                <AlertCircle size={16} className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full gap-2"
+              size="lg"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                  Signing in...
+                </span>
+              ) : (
+                <>
+                  <LogIn size={16} />
+                  Sign In
+                </>
+              )}
+            </Button>
+          </form>
         </div>
-        <button type="submit" disabled={loading} style={{ padding: '8px 16px', width: '100%' }}>
-          {loading ? 'Loading...' : 'Login'}
-        </button>
-      </form>
-      {error && <p style={{ color: 'red', marginTop: 12 }}>{error}</p>}
+
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          QSolicit &copy; {new Date().getFullYear()}
+        </p>
+      </div>
     </div>
   )
 }

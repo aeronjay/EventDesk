@@ -1,38 +1,57 @@
+import { useLocation, useNavigate, Outlet } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
 import { useState } from 'react'
-import { supabase } from '../lib/supabaseClient'
-import type { User } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
 import {
   LayoutDashboard,
   FileText,
   Clock,
   Settings,
+  Shield,
   LogOut,
   Menu,
   X,
 } from 'lucide-react'
 
-type NavItem = 'dashboard' | 'solicits' | 'history' | 'settings'
+interface NavItem {
+  id: string
+  label: string
+  icon: React.ElementType
+  path: string
+  superAdminOnly?: boolean
+}
 
-const navItems: { id: NavItem; label: string; icon: React.ElementType }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'solicits', label: 'Solicits', icon: FileText },
-  { id: 'history', label: 'History', icon: Clock },
-  { id: 'settings', label: 'Settings', icon: Settings },
+const navItems: NavItem[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
+  { id: 'solicits', label: 'Solicits', icon: FileText, path: '/solicits' },
+  { id: 'history', label: 'History', icon: Clock, path: '/history' },
+  { id: 'settings', label: 'Settings', icon: Settings, path: '/settings' },
+  { id: 'admin', label: 'Admin', icon: Shield, path: '/admin', superAdminOnly: true },
 ]
 
-export default function Dashboard({ user }: { user: User }) {
-  const [activeNav, setActiveNav] = useState<NavItem>('dashboard')
+export default function Dashboard() {
+  const { user, isSuperAdmin, signOut } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
+  const visibleNavItems = navItems.filter(
+    (item) => !item.superAdminOnly || isSuperAdmin
+  )
+
+  // Find active nav by path
+  const activeItem = visibleNavItems.find((item) => {
+    if (item.path === '/') return location.pathname === '/'
+    return location.pathname.startsWith(item.path)
+  })
+
+  const handleNav = (item: NavItem) => {
+    navigate(item.path)
+    setSidebarOpen(false)
   }
 
-  const activeItem = navItems.find((item) => item.id === activeNav)
-
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -43,7 +62,7 @@ export default function Dashboard({ user }: { user: User }) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-card transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-56 flex-col border-r border-border bg-card transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -66,17 +85,14 @@ export default function Dashboard({ user }: { user: User }) {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 px-3 py-4">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon
-            const isActive = activeNav === item.id
+            const isActive = activeItem?.id === item.id
             return (
               <button
                 key={item.id}
                 id={`nav-${item.id}`}
-                onClick={() => {
-                  setActiveNav(item.id)
-                  setSidebarOpen(false)
-                }}
+                onClick={() => handleNav(item)}
                 className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   isActive
                     ? 'bg-primary text-primary-foreground'
@@ -85,6 +101,11 @@ export default function Dashboard({ user }: { user: User }) {
               >
                 <Icon size={18} />
                 {item.label}
+                {item.superAdminOnly && (
+                  <span className="ml-auto text-[10px] font-bold uppercase tracking-wider opacity-60">
+                    Admin
+                  </span>
+                )}
               </button>
             )
           })}
@@ -92,14 +113,21 @@ export default function Dashboard({ user }: { user: User }) {
 
         {/* User section at bottom */}
         <div className="border-t border-border p-3">
-          <div className="mb-2 truncate px-3 text-xs text-muted-foreground">
-            {user.email}
+          <div className="mb-2 flex items-center gap-2 px-3">
+            <span className="truncate text-xs text-muted-foreground flex-1">
+              {user?.email}
+            </span>
+            {isSuperAdmin && (
+              <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary uppercase tracking-wider">
+                Super
+              </span>
+            )}
           </div>
           <Button
             id="btn-logout"
             variant="ghost"
             size="sm"
-            onClick={handleLogout}
+            onClick={signOut}
             className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
           >
             <LogOut size={16} />
@@ -109,9 +137,9 @@ export default function Dashboard({ user }: { user: User }) {
       </aside>
 
       {/* Main content area */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col min-w-0">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-card/80 px-4 backdrop-blur-sm lg:px-6">
+        <header className="shrink-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-card/80 px-4 backdrop-blur-sm lg:px-6">
           <button
             id="btn-mobile-menu"
             onClick={() => setSidebarOpen(true)}
@@ -120,13 +148,13 @@ export default function Dashboard({ user }: { user: User }) {
             <Menu size={20} />
           </button>
           <h1 className="text-base font-semibold text-foreground">
-            {activeItem?.label}
+            {activeItem?.label ?? 'QSolicit'}
           </h1>
         </header>
 
-        {/* Page body — empty */}
-        <main className="flex flex-1 items-center justify-center p-6">
-          {/* Content will go here */}
+        {/* Page body — rendered by router */}
+        <main className="flex flex-1 flex-col min-h-0">
+          <Outlet />
         </main>
       </div>
     </div>

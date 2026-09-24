@@ -2,10 +2,122 @@ import * as React from "react"
 import { cn } from "cn"
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
+  const containerRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    let isDown = false
+    let isGrabbing = false
+    let startX = 0
+    let startY = 0
+    let scrollLeft = 0
+    let scrollTop = 0
+    let hasDragged = false
+    let grabTimeout: ReturnType<typeof setTimeout>
+    let styleEl: HTMLStyleElement | null = null
+
+    const setGrabbingCursor = () => {
+      if (!styleEl) {
+        styleEl = document.createElement("style")
+        styleEl.innerHTML = "* { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }"
+        document.head.appendChild(styleEl)
+        window.getSelection()?.removeAllRanges()
+      }
+    }
+
+    const removeGrabbingCursor = () => {
+      if (styleEl) {
+        document.head.removeChild(styleEl)
+        styleEl = null
+      }
+    }
+
+    const onMouseDown = (e: MouseEvent) => {
+      isDown = true
+      isGrabbing = false
+      hasDragged = false
+      startX = e.pageX - el.offsetLeft
+      startY = e.pageY - el.offsetTop
+      scrollLeft = el.scrollLeft
+      scrollTop = el.scrollTop
+
+      grabTimeout = setTimeout(() => {
+        if (isDown) {
+          isGrabbing = true
+          setGrabbingCursor()
+        }
+      }, 150)
+    }
+
+    const onMouseLeave = () => {
+      isDown = false
+      isGrabbing = false
+      clearTimeout(grabTimeout)
+      removeGrabbingCursor()
+    }
+
+    const onMouseUp = () => {
+      isDown = false
+      isGrabbing = false
+      clearTimeout(grabTimeout)
+      removeGrabbingCursor()
+    }
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDown) return
+
+      const x = e.pageX - el.offsetLeft
+      const y = e.pageY - el.offsetTop
+
+      if (!isGrabbing) {
+        if (Math.abs(x - startX) > 5 || Math.abs(y - startY) > 5) {
+          clearTimeout(grabTimeout)
+          hasDragged = true
+        }
+        return
+      }
+
+      hasDragged = true
+      e.preventDefault()
+
+      const walkX = (x - startX) * 2
+
+      el.scrollLeft = scrollLeft - walkX
+    }
+
+    const onClickCapture = (e: MouseEvent) => {
+      const selection = window.getSelection()
+      const hasSelection = selection && selection.toString().trim().length > 0
+
+      if (hasDragged || hasSelection) {
+        e.stopPropagation()
+        e.preventDefault()
+      }
+    }
+
+    el.addEventListener("mousedown", onMouseDown)
+    el.addEventListener("mouseleave", onMouseLeave)
+    el.addEventListener("mouseup", onMouseUp)
+    el.addEventListener("mousemove", onMouseMove)
+    el.addEventListener("click", onClickCapture, { capture: true })
+
+    return () => {
+      el.removeEventListener("mousedown", onMouseDown)
+      el.removeEventListener("mouseleave", onMouseLeave)
+      el.removeEventListener("mouseup", onMouseUp)
+      el.removeEventListener("mousemove", onMouseMove)
+      el.removeEventListener("click", onClickCapture, { capture: true })
+      removeGrabbingCursor()
+    }
+  }, [])
+
   return (
     <div
+      ref={containerRef}
       data-slot="table-container"
-      className="relative w-full h-full overflow-auto"
+      className="relative w-full h-full overflow-auto cursor-grab"
     >
       <table
         data-slot="table"

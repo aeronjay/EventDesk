@@ -210,9 +210,9 @@ export default function SolicitationsPage() {
         {typeOptions.length > 0 && (
           <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v ?? 'all')}>
             <SelectTrigger id="filter-type" className="w-[160px]">
-              <div className="flex items-center gap-2">
-                <Filter size={14} className="text-muted-foreground" />
-                <SelectValue placeholder="Type" />
+              <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                <Filter size={14} className="text-muted-foreground shrink-0" />
+                <SelectValue placeholder="Type" className="truncate" />
               </div>
             </SelectTrigger>
             <SelectContent>
@@ -308,7 +308,7 @@ export default function SolicitationsPage() {
                   {paginated.map((s) => (
                     <TableRow
                       key={s.id}
-                      className="group cursor-pointer"
+                      className="group"
                       onClick={() => handleView(s)}
                     >
                       <TableCell className="whitespace-nowrap">

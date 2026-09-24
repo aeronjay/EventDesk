@@ -16,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Pencil, Shield, Settings2 } from 'lucide-react'
-import { FieldConfigSheet } from './FieldConfigSheet'
+import { FieldConfigSheet } from './FieldConfigSheet.tsx'
 import { toast } from 'sonner'
 
 export default function AdminPage() {
@@ -84,7 +84,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col h-full gap-6 p-6 min-h-0">
       {/* Page header */}
       <div>
         <div className="flex items-center gap-2 mb-1">
@@ -97,7 +97,7 @@ export default function AdminPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="rounded-xl border border-border bg-card flex flex-col flex-1 min-h-0 overflow-hidden">
         {loading ? (
           <div className="space-y-0">
             <div className="flex gap-4 border-b border-border bg-muted/30 px-4 py-3">
@@ -114,10 +114,10 @@ export default function AdminPage() {
             ))}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="flex-1 min-h-0">
             <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHeader className="sticky top-0 z-10 shadow-sm">
+                <TableRow className="bg-muted/95 hover:bg-muted/95">
                   <TableHead>Field</TableHead>
                   <TableHead className="w-[100px]">Type</TableHead>
                   <TableHead className="w-[90px]">Required</TableHead>

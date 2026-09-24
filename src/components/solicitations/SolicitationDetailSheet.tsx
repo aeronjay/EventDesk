@@ -89,7 +89,7 @@ export function SolicitationDetailSheet({
                   <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     {config.label}
                   </dt>
-                  <dd className="text-sm text-foreground">
+                  <dd className="text-sm text-foreground flex items-center gap-2">
                     {config.field_name === 'status' && value ? (
                       <Badge variant={statusVariantMap[String(value)] ?? 'outline'}>
                         {String(value)}
@@ -99,6 +99,19 @@ export function SolicitationDetailSheet({
                         {display}
                       </span>
                     )}
+                    {config.field_name === 'control_number' && solicitation.control_number_color && (() => {
+                      const mapping = config.color_mappings?.find(m => m.color === solicitation.control_number_color)
+                      return (
+                        <Badge 
+                          style={{ backgroundColor: solicitation.control_number_color, color: '#fff' }} 
+                          variant="outline" 
+                          className="border-0 text-xs px-1.5 py-0"
+                          title={mapping?.label || 'Color'}
+                        >
+                          {mapping?.label || '—'}
+                        </Badge>
+                      )
+                    })()}
                   </dd>
                 </div>
               )

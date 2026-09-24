@@ -1,5 +1,10 @@
 import { supabase } from './supabaseClient'
 
+export interface ColorMapping {
+  color: string
+  label: string
+}
+
 export interface FieldConfig {
   id: string
   field_name: string
@@ -8,6 +13,8 @@ export interface FieldConfig {
   options: string[]
   is_required: boolean
   validation_rule: string | null
+  default_value: string | null
+  color_mappings: ColorMapping[] | null
   display_order: number
   created_at: string
   updated_at: string
@@ -25,7 +32,7 @@ export async function fetchFieldConfigs(): Promise<FieldConfig[]> {
 
 export async function updateFieldConfig(
   id: string,
-  updates: Partial<Pick<FieldConfig, 'field_type' | 'options' | 'is_required' | 'validation_rule' | 'label'>>
+  updates: Partial<Pick<FieldConfig, 'field_type' | 'options' | 'is_required' | 'validation_rule' | 'label' | 'default_value' | 'color_mappings'>>
 ) {
   const { data, error } = await supabase
     .from('field_configs')

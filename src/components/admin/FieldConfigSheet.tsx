@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { FieldConfig } from '@/lib/fieldConfigs'
+import type { FieldConfig, ColorMapping } from '@/lib/fieldConfigs'
 import {
   Sheet,
   SheetContent,
@@ -48,8 +48,15 @@ export function FieldConfigSheet({
   const [fieldType, setFieldType] = useState('text')
   const [isRequired, setIsRequired] = useState(false)
   const [validationRule, setValidationRule] = useState('')
+  const [defaultValue, setDefaultValue] = useState('')
   const [options, setOptions] = useState<string[]>([])
+  const [colorMappings, setColorMappings] = useState<ColorMapping[]>([])
   const [newOption, setNewOption] = useState('')
+  
+  // New color mapping form state
+  const [newMappingColor, setNewMappingColor] = useState('#eab308')
+  const [newMappingLabel, setNewMappingLabel] = useState('')
+  
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -57,8 +64,12 @@ export function FieldConfigSheet({
       setFieldType(fieldConfig.field_type)
       setIsRequired(fieldConfig.is_required)
       setValidationRule(fieldConfig.validation_rule ?? '')
+      setDefaultValue(fieldConfig.default_value ?? '')
       setOptions(fieldConfig.options ?? [])
+      setColorMappings(fieldConfig.color_mappings ?? [])
       setNewOption('')
+      setNewMappingColor('#eab308')
+      setNewMappingLabel('')
     }
   }, [open, fieldConfig])
 
@@ -72,6 +83,19 @@ export function FieldConfigSheet({
 
   const handleRemoveOption = (opt: string) => {
     setOptions((prev) => prev.filter((o) => o !== opt))
+  }
+
+  const handleAddMapping = () => {
+    if (!newMappingLabel.trim()) return
+    setColorMappings((prev) => [
+      ...prev,
+      { color: newMappingColor, label: newMappingLabel.trim() }
+    ])
+    setNewMappingLabel('')
+  }
+
+  const handleRemoveMapping = (index: number) => {
+    setColorMappings((prev) => prev.filter((_, i) => i !== index))
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -89,6 +113,8 @@ export function FieldConfigSheet({
         field_type: fieldType as FieldConfig['field_type'],
         is_required: isRequired,
         validation_rule: validationRule.trim() || null,
+        default_value: defaultValue.trim() || null,
+        color_mappings: colorMappings.length > 0 ? colorMappings : null,
         options: fieldType === 'select' ? options : [],
       })
     } finally {
@@ -172,6 +198,37 @@ export function FieldConfigSheet({
               </div>
             )}
 
+            {/* Default Value */}
+            <div className="space-y-1.5">
+              <Label htmlFor="config-default-value">Default Value</Label>
+              {fieldType === 'select' ? (
+                <Select value={defaultValue} onValueChange={(v) => setDefaultValue(v === 'none' ? '' : v)}>
+                  <SelectTrigger id="config-default-value">
+                    <SelectValue placeholder="Select a default value..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Default</SelectItem>
+                    {options.map((opt) => (
+                      <SelectItem key={opt} value={opt}>
+                        {opt}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="config-default-value"
+                  value={defaultValue}
+                  onChange={(e) => setDefaultValue(e.target.value)}
+                  placeholder="e.g. N/A"
+                  className="text-sm"
+                />
+              )}
+              <p className="text-xs text-muted-foreground">
+                Optional default value for new solicitations
+              </p>
+            </div>
+
             {/* Options Manager (only for select type) */}
             {fieldType === 'select' && (
               <div className="space-y-3">
@@ -228,6 +285,93 @@ export function FieldConfigSheet({
                 </div>
               </div>
             )}
+
+            {/* Color Mappings */}
+            <div className="space-y-3 pt-2">
+              <Label>Color & Group Mapping</Label>
+              <p className="text-xs text-muted-foreground -mt-1">
+                Define available colors and labels (e.g., "Group A") that users can pick for this field.
+              </p>
+
+              {colorMappings.length > 0 ? (
+                <div className="space-y-2">
+                  {colorMappings.map((cm, idx) => (
+                    <div key={idx} className="flex items-center gap-2 bg-muted/50 p-2 rounded-md">
+                      <div className="flex-1 flex items-center gap-2">
+                        <div 
+                          className="w-4 h-4 rounded-full border border-border" 
+                          style={{ backgroundColor: cm.color }} 
+                        />
+                        <span className="text-sm font-medium">{cm.label}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMapping(idx)}
+                        className="rounded-full p-1 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">
+                  No color mappings added yet
+                </p>
+              )}
+
+              <div className="flex flex-col gap-2 mt-2 border rounded-md p-3 bg-muted/20">
+                <div className="flex gap-2">
+                  <Select value={newMappingColor} onValueChange={setNewMappingColor}>
+                    <SelectTrigger className="w-[120px] h-8 text-sm">
+                      <SelectValue placeholder="Color" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="#eab308">
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#eab308]" />Yellow</div>
+                      </SelectItem>
+                      <SelectItem value="#3b82f6">
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#3b82f6]" />Blue</div>
+                      </SelectItem>
+                      <SelectItem value="#22c55e">
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#22c55e]" />Green</div>
+                      </SelectItem>
+                      <SelectItem value="#ef4444">
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#ef4444]" />Red</div>
+                      </SelectItem>
+                      <SelectItem value="#8b5cf6">
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#8b5cf6]" />Purple</div>
+                      </SelectItem>
+                      <SelectItem value="#f97316">
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#f97316]" />Orange</div>
+                      </SelectItem>
+                      <SelectItem value="#64748b">
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#64748b]" />Gray</div>
+                      </SelectItem>
+                      <SelectItem value="#ec4899">
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#ec4899]" />Pink</div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    placeholder="Label (e.g. Group A)"
+                    value={newMappingLabel}
+                    onChange={(e) => setNewMappingLabel(e.target.value)}
+                    className="flex-1 text-sm h-8"
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="h-8 gap-1"
+                    onClick={handleAddMapping}
+                    disabled={!newMappingLabel.trim()}
+                  >
+                    <Plus size={14} /> Add
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

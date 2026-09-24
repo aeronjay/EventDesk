@@ -19,6 +19,7 @@ export interface Solicitation {
   remarks: string | null
   voters_turnout: string | null
   additional_note: string | null
+  control_number_color: string | null
   created_by: string | null
   created_at: string
   updated_at: string

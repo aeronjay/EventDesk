@@ -60,12 +60,15 @@ export function SolicitationSheet({
           const value = solicitRecord[config.field_name]
           data[config.field_name] = value != null ? String(value) : ''
         })
+        if (solicitation.control_number_color) {
+          data.control_number_color = solicitation.control_number_color
+        }
         setFormData(data)
       } else {
         // Blank form
         const data: Record<string, string> = {}
         fieldConfigs.forEach((config) => {
-          data[config.field_name] = ''
+          data[config.field_name] = config.default_value ?? ''
         })
         setFormData(data)
       }
@@ -115,6 +118,11 @@ export function SolicitationSheet({
         const val = formData[config.field_name]?.trim()
         record[config.field_name] = val || null
       })
+      if (formData.control_number_color) {
+        record.control_number_color = formData.control_number_color
+      } else {
+        record.control_number_color = null
+      }
 
       if (isEdit && solicitation) {
         await updateSolicitation(solicitation.id, record)
@@ -207,14 +215,40 @@ export function SolicitationSheet({
             className={error ? 'border-destructive' : ''}
           />
         ) : (
-          <Input
-            id={fieldId}
-            type="text"
-            value={value}
-            onChange={(e) => updateField(config.field_name, e.target.value)}
-            placeholder={`Enter ${config.label.toLowerCase()}`}
-            className={error ? 'border-destructive' : ''}
-          />
+          <div className="flex items-center gap-2">
+            <Input
+              id={fieldId}
+              type="text"
+              value={value}
+              onChange={(e) => updateField(config.field_name, e.target.value)}
+              placeholder={`Enter ${config.label.toLowerCase()}`}
+              className={`flex-1 ${error ? 'border-destructive' : ''}`}
+            />
+            {config.field_name === 'control_number' && config.color_mappings && config.color_mappings.length > 0 && (
+              <Select
+                value={formData.control_number_color || 'none'}
+                onValueChange={(v) => updateField('control_number_color', v === 'none' ? '' : v)}
+              >
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Group/Color" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Color</SelectItem>
+                  {config.color_mappings.map((cm, idx) => (
+                    <SelectItem key={idx} value={cm.color}>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full border border-border"
+                          style={{ backgroundColor: cm.color }}
+                        />
+                        {cm.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
         )}
 
         {error && (

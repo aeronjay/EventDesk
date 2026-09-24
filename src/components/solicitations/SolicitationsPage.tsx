@@ -315,7 +315,24 @@ export default function SolicitationsPage() {
                         <Badge variant="secondary" className="font-normal">{s.type || '—'}</Badge>
                       </TableCell>
                       <TableCell className="font-mono text-sm font-medium whitespace-nowrap">
-                        {s.control_number || '—'}
+                        <div className="flex items-center gap-2">
+                          <span>{s.control_number || '—'}</span>
+                          {s.control_number_color && (() => {
+                            const cnConfig = fieldConfigs.find(c => c.field_name === 'control_number')
+                            const mapping = cnConfig?.color_mappings?.find(m => m.color === s.control_number_color)
+                            
+                            return (
+                              <Badge 
+                                style={{ backgroundColor: s.control_number_color, color: '#fff' }} 
+                                variant="outline" 
+                                className="border-0 text-xs px-1.5 py-0"
+                                title={mapping?.label || 'Color'}
+                              >
+                                {mapping?.label || '—'}
+                              </Badge>
+                            )
+                          })()}
+                        </div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                         {s.date_received

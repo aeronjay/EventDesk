@@ -55,8 +55,9 @@ export default function AdminPage() {
       setSheetOpen(false)
       setEditingConfig(null)
       loadConfigs()
-    } catch {
-      toast.error('Failed to update field configuration')
+    } catch (err: any) {
+      console.error(err)
+      toast.error(`Failed to update: ${err.message || 'Unknown error'}`)
     }
   }
 

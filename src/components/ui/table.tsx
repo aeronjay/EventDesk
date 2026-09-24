@@ -82,7 +82,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
       hasDragged = true
       e.preventDefault()
 
-      const walkX = (x - startX) * 2
+      const walkX = (x - startX) * 1
 
       el.scrollLeft = scrollLeft - walkX
     }

@@ -41,7 +41,7 @@ interface SolicitationDialogProps {
   onOpenChange: (open: boolean) => void
   solicitation: Solicitation | null // null = Add mode
   fieldConfigs: FieldConfig[]
-  onSaved: () => void
+  onSaved: (record: Solicitation, isEdit: boolean) => void
 }
 
 export function SolicitationDialog({
@@ -65,7 +65,13 @@ export function SolicitationDialog({
         const data: Record<string, string> = {}
         const solicitRecord = solicitation as unknown as Record<string, unknown>
         fieldConfigs.forEach((config) => {
-          const value = solicitRecord[config.field_name]
+          let value = solicitRecord[config.field_name]
+          if (config.field_type === 'time' && typeof value === 'string') {
+             const match = value.match(/^(\d{2}:\d{2}(:\d{2})?)/)
+             if (match) {
+                 value = match[1]
+             }
+          }
           data[config.field_name] = value != null ? String(value) : ''
         })
         if (solicitation.control_number_color) {
@@ -132,14 +138,15 @@ export function SolicitationDialog({
         record.control_number_color = null
       }
 
+      let savedRecord: Solicitation
       if (isEdit && solicitation) {
-        await updateSolicitation(solicitation.id, record)
+        savedRecord = await updateSolicitation(solicitation.id, record)
         toast.success('Solicitation updated successfully')
       } else {
-        await createSolicitation({ ...record, created_by: user?.id ?? null })
+        savedRecord = await createSolicitation({ ...record, created_by: user?.id ?? null })
         toast.success('Solicitation created successfully')
       }
-      onSaved()
+      onSaved(savedRecord, isEdit)
     } catch (err) {
       console.error(err)
       toast.error(isEdit ? 'Failed to update' : 'Failed to create')

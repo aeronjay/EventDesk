@@ -111,6 +111,12 @@ export default function SolicitationsPage() {
       ])
       setSolicitations(solicits)
       setFieldConfigs(configs)
+      
+      setViewingSolicitation(prev => {
+        if (!prev) return null
+        const updated = solicits.find(s => s.id === prev.id)
+        return updated || prev
+      })
     } catch (err) {
       console.error(err)
       toast.error('Failed to load solicitations')
@@ -269,19 +275,32 @@ export default function SolicitationsPage() {
     if (!deletingSolicitation) return
     try {
       await deleteSolicitation(deletingSolicitation.id)
+      
+      setSolicitations(prev => prev.filter(s => s.id !== deletingSolicitation.id))
+      if (viewingSolicitation?.id === deletingSolicitation.id) {
+        setViewingSolicitation(null)
+      }
+
       toast.success('Solicitation deleted successfully')
       setDeleteOpen(false)
       setDeletingSolicitation(null)
-      loadData()
     } catch {
       toast.error('Failed to delete solicitation')
     }
   }
 
-  const handleSaved = () => {
+  const handleSaved = (savedRecord: Solicitation, isEdit: boolean) => {
     setSheetOpen(false)
     setEditingSolicitation(null)
-    loadData()
+    
+    if (isEdit) {
+      setSolicitations(prev => prev.map(s => s.id === savedRecord.id ? savedRecord : s))
+      if (viewingSolicitation?.id === savedRecord.id) {
+        setViewingSolicitation(savedRecord)
+      }
+    } else {
+      setSolicitations(prev => [savedRecord, ...prev])
+    }
   }
 
   const handleStatusChange = async (s: Solicitation, newStatus: string) => {
@@ -294,12 +313,19 @@ export default function SolicitationsPage() {
          setViewingSolicitation({ ...viewingSolicitation, status: newStatus })
       }
 
-      await updateSolicitation(s.id, { status: newStatus })
+      const updated = await updateSolicitation(s.id, { status: newStatus })
+      
+      // Update with database values
+      setSolicitations((prev) => 
+        prev.map((item) => (item.id === s.id ? updated : item))
+      )
+      if (viewingSolicitation?.id === s.id) {
+         setViewingSolicitation(updated)
+      }
+
       toast.success('Status updated')
-      loadData(false)
     } catch {
       toast.error('Failed to update status')
-      loadData(false)
     }
   }
 

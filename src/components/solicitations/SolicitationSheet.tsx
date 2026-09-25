@@ -202,6 +202,9 @@ export function SolicitationSheet({
             id={fieldId}
             type="time"
             value={value}
+            onClick={() => {
+              if (!value) updateField(config.field_name, '08:00')
+            }}
             onChange={(e) => updateField(config.field_name, e.target.value)}
             className={error ? 'border-destructive' : ''}
           />

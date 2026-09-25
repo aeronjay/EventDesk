@@ -539,10 +539,12 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
             Clear all
           </Button>
         )}
-        <Button onClick={handleAdd} className="gap-2 shrink-0 sm:ml-auto">
-          <Plus size={16} />
-          Add Solicitation
-        </Button>
+        {!showHistory && (
+          <Button onClick={handleAdd} className="gap-2 shrink-0 sm:ml-auto">
+            <Plus size={16} />
+            Add Solicitation
+          </Button>
+        )}
       </div>
 
       {/* Table Container */}
@@ -577,7 +579,7 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
                 ? 'Try adjusting your search or filters'
                 : 'Get started by adding your first solicitation record'}
             </p>
-            {!hasActiveFilters && (
+            {!hasActiveFilters && !showHistory && (
               <Button onClick={handleAdd} size="sm" className="gap-2">
                 <Plus size={14} />
                 Add Solicitation

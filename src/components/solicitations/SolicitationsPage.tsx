@@ -516,7 +516,7 @@ export default function SolicitationsPage() {
               <Table>
                 <TableHeader className="sticky top-0 z-10 shadow-sm">
                   <TableRow className="bg-muted/95 hover:bg-muted/95">
-                    <TableHead className="whitespace-nowrap">Type</TableHead>
+                    <TableHead className="w-[150px] min-w-[150px] max-w-[150px]">Type</TableHead>
                     <TableHead className="whitespace-nowrap">Control No.</TableHead>
                     <TableHead className="whitespace-nowrap">Date Received</TableHead>
                     <TableHead className="whitespace-nowrap">Organization</TableHead>
@@ -542,8 +542,10 @@ export default function SolicitationsPage() {
                       onClick={() => toggleView(s)}
                       data-state={viewingSolicitation?.id === s.id ? 'selected' : undefined}
                     >
-                      <TableCell className="whitespace-nowrap">
-                        <Badge variant="secondary" className="font-normal">{s.type || '—'}</Badge>
+                      <TableCell className="w-[150px] min-w-[150px] max-w-[150px]">
+                        <Badge variant="secondary" className="font-normal max-w-full" title={s.type || ''}>
+                          <span className="truncate block">{s.type || '—'}</span>
+                        </Badge>
                       </TableCell>
                       <TableCell className="font-mono text-sm font-medium whitespace-nowrap">
                         <div className="flex items-center gap-2">

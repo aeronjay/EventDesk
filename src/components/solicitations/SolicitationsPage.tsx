@@ -68,14 +68,14 @@ const formatEventTime = (time?: string | null) => {
   return `${hours}:${mins} ${ampm}`;
 };
 
-const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline' | 'success'> = {
   Pending: 'outline',
   Ongoing: 'default',
-  Done: 'secondary',
+  Done: 'success',
   Discontinued: 'destructive',
 }
 
-export default function SolicitationsPage() {
+export default function SolicitationsPage({ showHistory = false }: { showHistory?: boolean }) {
   const [solicitations, setSolicitations] = useState<Solicitation[]>([])
   const [fieldConfigs, setFieldConfigs] = useState<FieldConfig[]>([])
   const [loading, setLoading] = useState(true)
@@ -136,10 +136,17 @@ export default function SolicitationsPage() {
     return config?.options ?? []
   }, [fieldConfigs])
 
-  const statusOptions = useMemo(() => {
+  const allStatusOptions = useMemo(() => {
     const config = fieldConfigs.find((c) => c.field_name === 'status')
     return config?.options ?? []
   }, [fieldConfigs])
+
+  const filterStatusOptions = useMemo(() => {
+    return allStatusOptions.filter(o => {
+      const isHistory = ['Done', 'Discontinued'].includes(o)
+      return showHistory ? isHistory : !isHistory
+    })
+  }, [allStatusOptions, showHistory])
 
   // Filter + search + sort
   const filtered = useMemo(() => {
@@ -182,6 +189,12 @@ export default function SolicitationsPage() {
     }
 
     let itemsWithTime = result.map(s => ({ item: s, time: getSortTime(s, sortBy) }))
+
+    if (showHistory) {
+      itemsWithTime = itemsWithTime.filter(x => ['Done', 'Discontinued'].includes(x.item.status || ''))
+    } else {
+      itemsWithTime = itemsWithTime.filter(x => !['Done', 'Discontinued'].includes(x.item.status || ''))
+    }
 
     if (filterType !== 'all') {
       itemsWithTime = itemsWithTime.filter((x) => x.item.type === filterType)
@@ -304,6 +317,9 @@ export default function SolicitationsPage() {
   }
 
   const handleStatusChange = async (s: Solicitation, newStatus: string) => {
+    const previousStatus = s.status || ''
+    if (previousStatus === newStatus) return
+
     try {
       // Optimistic UI update
       setSolicitations((prev) => 
@@ -323,7 +339,40 @@ export default function SolicitationsPage() {
          setViewingSolicitation(updated)
       }
 
-      toast.success('Status updated')
+      const isMovedToHistory = !showHistory && ['Done', 'Discontinued'].includes(newStatus)
+      const isMovedToActive = showHistory && !['Done', 'Discontinued'].includes(newStatus)
+
+      if (isMovedToHistory || isMovedToActive) {
+        toast.success(`Moved to ${isMovedToHistory ? 'History' : 'Active Solicits'}`, {
+          action: {
+            label: 'Undo',
+            onClick: async () => {
+              try {
+                // Optimistically revert
+                setSolicitations((prev) => 
+                  prev.map((item) => (item.id === s.id ? { ...item, status: previousStatus } : item))
+                )
+                if (viewingSolicitation?.id === s.id) {
+                  setViewingSolicitation({ ...viewingSolicitation, status: previousStatus })
+                }
+                const reverted = await updateSolicitation(s.id, { status: previousStatus })
+                setSolicitations((prev) => 
+                  prev.map((item) => (item.id === s.id ? reverted : item))
+                )
+                if (viewingSolicitation?.id === s.id) {
+                  setViewingSolicitation(reverted)
+                }
+                toast.success('Status reverted')
+              } catch {
+                toast.error('Failed to revert status')
+              }
+            }
+          },
+          duration: 5000,
+        })
+      } else {
+        toast.success('Status updated')
+      }
     } catch {
       toast.error('Failed to update status')
     }
@@ -416,7 +465,7 @@ export default function SolicitationsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Statuses</SelectItem>
-                    {statusOptions.map((opt) => (
+                    {filterStatusOptions.map((opt) => (
                       <SelectItem key={opt} value={opt}>
                         {opt}
                       </SelectItem>
@@ -634,7 +683,7 @@ export default function SolicitationsPage() {
                         <DropdownMenu>
                           <DropdownMenuTrigger onClick={(e) => e.stopPropagation()} className="focus:outline-none">
                             {s.status ? (
-                              <Badge variant={statusVariantMap[s.status] ?? 'outline'} className="hover:opacity-80 transition-opacity cursor-pointer">
+                              <Badge variant={(statusVariantMap[s.status] as any) ?? 'outline'} className="hover:opacity-80 transition-opacity cursor-pointer">
                                 {s.status}
                               </Badge>
                             ) : (
@@ -642,7 +691,7 @@ export default function SolicitationsPage() {
                             )}
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start">
-                            {statusOptions.map((opt) => (
+                            {allStatusOptions.map((opt) => (
                               <DropdownMenuItem
                                 key={opt}
                                 onClick={(e) => {

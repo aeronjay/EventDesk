@@ -43,14 +43,10 @@ function AppRoutes() {
             </div>
           }
         />
-        <Route path="solicits" element={<SolicitationsPage />} />
+        <Route path="solicits" element={<SolicitationsPage key="solicits" showHistory={false} />} />
         <Route
           path="history"
-          element={
-            <div className="flex flex-1 items-center justify-center p-6 text-muted-foreground">
-              History — coming soon
-            </div>
-          }
+          element={<SolicitationsPage key="history" showHistory={true} />}
         />
         <Route
           path="settings"

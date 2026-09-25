@@ -12,10 +12,10 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Pencil, Trash2, X } from 'lucide-react'
 
-const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline' | 'success'> = {
   Pending: 'outline',
   Ongoing: 'default',
-  Done: 'secondary',
+  Done: 'success',
   Discontinued: 'destructive',
 }
 
@@ -80,7 +80,7 @@ export function SolicitationDetailPanel({
             <DropdownMenu>
               <DropdownMenuTrigger className="focus:outline-none">
                 {solicitation.status && (
-                  <Badge variant={statusVariantMap[solicitation.status] ?? 'outline'} className="hover:opacity-80 transition-opacity cursor-pointer">
+                  <Badge variant={(statusVariantMap[solicitation.status] as any) ?? 'outline'} className="hover:opacity-80 transition-opacity cursor-pointer">
                     {solicitation.status}
                   </Badge>
                 )}
@@ -196,7 +196,7 @@ export function SolicitationDetailPanel({
                     <DropdownMenu>
                       <DropdownMenuTrigger className="focus:outline-none">
                         {value ? (
-                          <Badge variant={statusVariantMap[String(value)] ?? 'outline'} className="hover:opacity-80 transition-opacity cursor-pointer">
+                          <Badge variant={(statusVariantMap[String(value)] as any) ?? 'outline'} className="hover:opacity-80 transition-opacity cursor-pointer">
                             {String(value)}
                           </Badge>
                         ) : (

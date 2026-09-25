@@ -202,7 +202,7 @@ export function FieldConfigSheet({
             <div className="space-y-1.5">
               <Label htmlFor="config-default-value">Default Value</Label>
               {fieldType === 'select' ? (
-                <Select value={defaultValue} onValueChange={(v) => setDefaultValue(v === 'none' ? '' : v)}>
+                <Select value={defaultValue} onValueChange={(v) => v && setDefaultValue(v === 'none' ? '' : v)}>
                   <SelectTrigger id="config-default-value">
                     <SelectValue placeholder="Select a default value..." />
                   </SelectTrigger>
@@ -322,7 +322,7 @@ export function FieldConfigSheet({
 
               <div className="flex flex-col gap-2 mt-2 border rounded-md p-3 bg-muted/20">
                 <div className="flex gap-2">
-                  <Select value={newMappingColor} onValueChange={setNewMappingColor}>
+                  <Select value={newMappingColor} onValueChange={(v) => v && setNewMappingColor(v)}>
                     <SelectTrigger className="w-[120px] h-8 text-sm">
                       <SelectValue placeholder="Color" />
                     </SelectTrigger>

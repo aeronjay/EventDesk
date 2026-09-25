@@ -97,7 +97,6 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
   // Sheet states
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editingSolicitation, setEditingSolicitation] = useState<Solicitation | null>(null)
-  const [detailOpen, setDetailOpen] = useState(false)
   const [viewingSolicitation, setViewingSolicitation] = useState<Solicitation | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deletingSolicitation, setDeletingSolicitation] = useState<Solicitation | null>(null)
@@ -425,7 +424,7 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
 
               <div className="space-y-2">
                 <Label>Sort By</Label>
-                <Select value={sortBy} onValueChange={setSortBy}>
+                <Select value={sortBy} onValueChange={(v) => v && setSortBy(v)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -442,7 +441,7 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
 
               <div className="space-y-2">
                 <Label>Type</Label>
-                <Select value={filterType} onValueChange={setFilterType}>
+                <Select value={filterType} onValueChange={(v) => v && setFilterType(v)}>
                   <SelectTrigger>
                     <SelectValue placeholder="All Types" />
                   </SelectTrigger>
@@ -459,7 +458,7 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
 
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <Select value={filterStatus} onValueChange={(v) => v && setFilterStatus(v)}>
                   <SelectTrigger>
                     <SelectValue placeholder="All Statuses" />
                   </SelectTrigger>

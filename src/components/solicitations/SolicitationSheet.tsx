@@ -227,7 +227,7 @@ export function SolicitationSheet({
             {config.field_name === 'control_number' && config.color_mappings && config.color_mappings.length > 0 && (
               <Select
                 value={formData.control_number_color || 'none'}
-                onValueChange={(v) => updateField('control_number_color', v === 'none' ? '' : v)}
+                onValueChange={(v) => v && updateField('control_number_color', v === 'none' ? '' : v)}
               >
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Group/Color" />

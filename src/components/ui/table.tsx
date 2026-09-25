@@ -13,7 +13,6 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
     let startX = 0
     let startY = 0
     let scrollLeft = 0
-    let scrollTop = 0
     let hasDragged = false
     let grabTimeout: ReturnType<typeof setTimeout>
     let styleEl: HTMLStyleElement | null = null
@@ -41,7 +40,6 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
       startX = e.pageX - el.offsetLeft
       startY = e.pageY - el.offsetTop
       scrollLeft = el.scrollLeft
-      scrollTop = el.scrollTop
 
       grabTimeout = setTimeout(() => {
         if (isDown) {

@@ -4,6 +4,12 @@ import type { FieldConfig } from '@/lib/fieldConfigs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Pencil, Trash2, X } from 'lucide-react'
 
 const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -19,6 +25,7 @@ interface SolicitationDetailPanelProps {
   onEdit: (s: Solicitation) => void
   onDelete: (s: Solicitation) => void
   onClose: () => void
+  onStatusChange?: (s: Solicitation, newStatus: string) => void
 }
 
 export function SolicitationDetailPanel({
@@ -27,8 +34,11 @@ export function SolicitationDetailPanel({
   onEdit,
   onDelete,
   onClose,
+  onStatusChange,
 }: SolicitationDetailPanelProps) {
   if (!solicitation) return null
+
+  const statusOptions = fieldConfigs.find((c) => c.field_name === 'status')?.options ?? []
 
   const formatValue = (config: FieldConfig, value: unknown): string => {
     if (value == null || value === '') return '—'
@@ -67,11 +77,25 @@ export function SolicitationDetailPanel({
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-3">
             <span>{solicitation.organization_name || 'Solicitation Details'}</span>
-            {solicitation.status && (
-              <Badge variant={statusVariantMap[solicitation.status] ?? 'outline'}>
-                {solicitation.status}
-              </Badge>
-            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger className="focus:outline-none">
+                {solicitation.status && (
+                  <Badge variant={statusVariantMap[solicitation.status] ?? 'outline'} className="hover:opacity-80 transition-opacity cursor-pointer">
+                    {solicitation.status}
+                  </Badge>
+                )}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {statusOptions.map((opt) => (
+                  <DropdownMenuItem
+                    key={opt}
+                    onClick={() => onStatusChange?.(solicitation, opt)}
+                  >
+                    {opt}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
             Control No: {solicitation.control_number || '—'}
@@ -168,10 +192,28 @@ export function SolicitationDetailPanel({
                   {config.label}
                 </dt>
                 <dd className="text-sm text-foreground flex items-center gap-2 mt-1">
-                  {config.field_name === 'status' && value ? (
-                    <Badge variant={statusVariantMap[String(value)] ?? 'outline'}>
-                      {String(value)}
-                    </Badge>
+                  {config.field_name === 'status' ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="focus:outline-none">
+                        {value ? (
+                          <Badge variant={statusVariantMap[String(value)] ?? 'outline'} className="hover:opacity-80 transition-opacity cursor-pointer">
+                            {String(value)}
+                          </Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground hover:text-foreground cursor-pointer">—</span>
+                        )}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        {statusOptions.map((opt) => (
+                          <DropdownMenuItem
+                            key={opt}
+                            onClick={() => onStatusChange?.(solicitation, opt)}
+                          >
+                            {opt}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   ) : (
                     <span className={display === '—' ? 'text-muted-foreground' : ''}>
                       {display}

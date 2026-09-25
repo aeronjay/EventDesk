@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import {
   fetchSolicitations,
   deleteSolicitation,
+  updateSolicitation,
   type Solicitation,
 } from '@/lib/solicitations'
 import { fetchFieldConfigs, type FieldConfig } from '@/lib/fieldConfigs'
@@ -101,9 +102,9 @@ export default function SolicitationsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deletingSolicitation, setDeletingSolicitation] = useState<Solicitation | null>(null)
 
-  const loadData = async () => {
+  const loadData = async (showLoading = true) => {
     try {
-      setLoading(true)
+      if (showLoading) setLoading(true)
       const [solicits, configs] = await Promise.all([
         fetchSolicitations(),
         fetchFieldConfigs(),
@@ -114,7 +115,7 @@ export default function SolicitationsPage() {
       console.error(err)
       toast.error('Failed to load solicitations')
     } finally {
-      setLoading(false)
+      if (showLoading) setLoading(false)
     }
   }
 
@@ -281,6 +282,25 @@ export default function SolicitationsPage() {
     setSheetOpen(false)
     setEditingSolicitation(null)
     loadData()
+  }
+
+  const handleStatusChange = async (s: Solicitation, newStatus: string) => {
+    try {
+      // Optimistic UI update
+      setSolicitations((prev) => 
+        prev.map((item) => (item.id === s.id ? { ...item, status: newStatus } : item))
+      )
+      if (viewingSolicitation?.id === s.id) {
+         setViewingSolicitation({ ...viewingSolicitation, status: newStatus })
+      }
+
+      await updateSolicitation(s.id, { status: newStatus })
+      toast.success('Status updated')
+      loadData(false)
+    } catch {
+      toast.error('Failed to update status')
+      loadData(false)
+    }
   }
 
   const hasEventFilter = eventDateFrom !== '' || eventDateTo !== ''
@@ -583,13 +603,30 @@ export default function SolicitationsPage() {
                         {s.contact_number || '—'}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
-                        {s.status ? (
-                          <Badge variant={statusVariantMap[s.status] ?? 'outline'}>
-                            {s.status}
-                          </Badge>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">—</span>
-                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger onClick={(e) => e.stopPropagation()} className="focus:outline-none">
+                            {s.status ? (
+                              <Badge variant={statusVariantMap[s.status] ?? 'outline'} className="hover:opacity-80 transition-opacity cursor-pointer">
+                                {s.status}
+                              </Badge>
+                            ) : (
+                              <span className="text-sm text-muted-foreground hover:text-foreground cursor-pointer">—</span>
+                            )}
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            {statusOptions.map((opt) => (
+                              <DropdownMenuItem
+                                key={opt}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleStatusChange(s, opt)
+                                }}
+                              >
+                                {opt}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                         {s.recom || '—'}
@@ -701,6 +738,7 @@ export default function SolicitationsPage() {
             onEdit={(s) => handleEdit(s)}
             onDelete={(s) => handleDeleteClick(s)}
             onClose={() => setViewingSolicitation(null)}
+            onStatusChange={handleStatusChange}
           />
         </div>
       )}

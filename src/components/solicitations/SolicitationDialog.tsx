@@ -24,9 +24,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
 import { Separator } from '@/components/ui/separator'
-import { Save, Loader2, AlertCircle } from 'lucide-react'
+import { Save, Loader2, AlertCircle, CalendarIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import { format } from 'date-fns'
+import { cn } from '@/lib/utils'
 
 interface SolicitationDialogProps {
   open: boolean
@@ -191,13 +199,31 @@ export function SolicitationDialog({
             className={error ? 'border-destructive' : ''}
           />
         ) : config.field_type === 'date' ? (
-          <Input
-            id={fieldId}
-            type="date"
-            value={value}
-            onChange={(e) => updateField(config.field_name, e.target.value)}
-            className={error ? 'border-destructive' : ''}
-          />
+          <Popover>
+            <PopoverTrigger
+              render={
+                <Button
+                  id={fieldId}
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal flex",
+                    !value && "text-muted-foreground",
+                    error && "border-destructive"
+                  )}
+                />
+              }
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {value ? format(new Date(`${value}T00:00:00`), "PPP") : <span>Pick a date</span>}
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={value ? new Date(`${value}T00:00:00`) : undefined}
+                onSelect={(date) => updateField(config.field_name, date ? format(date, "yyyy-MM-dd") : '')}
+              />
+            </PopoverContent>
+          </Popover>
         ) : config.field_type === 'time' ? (
           <Input
             id={fieldId}
@@ -228,7 +254,7 @@ export function SolicitationDialog({
             {config.field_name === 'control_number' && config.color_mappings && config.color_mappings.length > 0 && (
               <Select
                 value={formData.control_number_color || 'none'}
-                onValueChange={(v) => updateField('control_number_color', v === 'none' ? '' : v)}
+                onValueChange={(v) => updateField('control_number_color', v === 'none' ? '' : (v ?? ''))}
               >
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Group/Color" />

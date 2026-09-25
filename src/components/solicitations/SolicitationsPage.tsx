@@ -49,7 +49,7 @@ import {
   Filter,
 } from 'lucide-react'
 import { SolicitationSheet } from './SolicitationSheet.tsx'
-import { SolicitationDetailSheet } from './SolicitationDetailSheet.tsx'
+import { SolicitationDetailPanel } from './SolicitationDetailPanel.tsx'
 import { DeleteDialog } from './DeleteDialog.tsx'
 import { toast } from 'sonner'
 
@@ -249,7 +249,14 @@ export default function SolicitationsPage() {
 
   const handleView = (s: Solicitation) => {
     setViewingSolicitation(s)
-    setDetailOpen(true)
+  }
+
+  const toggleView = (s: Solicitation) => {
+    if (viewingSolicitation?.id === s.id) {
+      setViewingSolicitation(null)
+    } else {
+      setViewingSolicitation(s)
+    }
   }
 
   const handleDeleteClick = (s: Solicitation) => {
@@ -287,25 +294,25 @@ export default function SolicitationsPage() {
   const hasActiveFilters = filterType !== 'all' || filterStatus !== 'all' || hasEventFilter || hasReceivedFilter || hasCreatedFilter || sortBy !== 'event_asc' || searchQuery.trim() !== ''
 
   return (
-    <div className="flex flex-col h-full gap-6 p-6 min-h-0">
-      {/* Page header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-foreground">Solicitations</h2>
-          <p className="text-sm text-muted-foreground">
-            Manage and track all solicitation records
-          </p>
-        </div>
-        <Button onClick={handleAdd} className="gap-2 shrink-0">
-          <Plus size={16} />
-          Add Solicitation
-        </Button>
-      </div>
+    <div className="flex flex-col h-full p-6 min-h-0">
+      {/* Content wrapper for side-by-side layout */}
+      <div className="flex flex-col lg:flex-row flex-1 min-h-0 min-w-0 gap-6">
+        
+        {/* Left Column (Header + Search + Table) */}
+        <div className="flex flex-col flex-1 min-w-0 min-h-0 gap-4 sm:gap-6">
+          
+          {/* Page header */}
+          <div className="flex flex-col gap-1">
+            <h2 className="text-xl font-semibold text-foreground">Solicitations</h2>
+            <p className="text-sm text-muted-foreground">
+              Manage and track all solicitation records
+            </p>
+          </div>
 
-      {/* Search + Filters bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+          {/* Search + Filters bar */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
           <Input
             id="search-solicitations"
             placeholder="Search by name, control no., event…"
@@ -446,10 +453,14 @@ export default function SolicitationsPage() {
             Clear all
           </Button>
         )}
+        <Button onClick={handleAdd} className="gap-2 shrink-0 sm:ml-auto">
+          <Plus size={16} />
+          Add Solicitation
+        </Button>
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-border bg-card flex flex-col flex-1 min-h-0 overflow-hidden">
+      {/* Table Container */}
+      <div className="rounded-xl border border-border bg-card flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
         {loading ? (
           <div className="space-y-0">
             {/* Skeleton header */}
@@ -515,8 +526,9 @@ export default function SolicitationsPage() {
                   {paginated.map((s) => (
                     <TableRow
                       key={s.id}
-                      className="group"
-                      onClick={() => handleView(s)}
+                      className="group cursor-pointer data-[state=selected]:bg-primary/10 hover:data-[state=selected]:bg-primary/15"
+                      onClick={() => toggleView(s)}
+                      data-state={viewingSolicitation?.id === s.id ? 'selected' : undefined}
                     >
                       <TableCell className="whitespace-nowrap">
                         <Badge variant="secondary" className="font-normal">{s.type || '—'}</Badge>
@@ -686,6 +698,21 @@ export default function SolicitationsPage() {
           </>
         )}
       </div>
+      </div>
+
+      {/* Detail Panel */}
+      {viewingSolicitation && (
+        <div className="rounded-xl border border-border bg-card flex flex-col flex-1 lg:flex-none lg:w-[400px] shrink-0 overflow-hidden">
+          <SolicitationDetailPanel
+            solicitation={viewingSolicitation}
+            fieldConfigs={fieldConfigs}
+            onEdit={(s) => handleEdit(s)}
+            onDelete={(s) => handleDeleteClick(s)}
+            onClose={() => setViewingSolicitation(null)}
+          />
+        </div>
+      )}
+      </div>
 
       {/* Sheets & Dialogs */}
       <SolicitationSheet
@@ -694,21 +721,6 @@ export default function SolicitationsPage() {
         solicitation={editingSolicitation}
         fieldConfigs={fieldConfigs}
         onSaved={handleSaved}
-      />
-
-      <SolicitationDetailSheet
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        solicitation={viewingSolicitation}
-        fieldConfigs={fieldConfigs}
-        onEdit={(s) => {
-          setDetailOpen(false)
-          handleEdit(s)
-        }}
-        onDelete={(s) => {
-          setDetailOpen(false)
-          handleDeleteClick(s)
-        }}
       />
 
       <DeleteDialog

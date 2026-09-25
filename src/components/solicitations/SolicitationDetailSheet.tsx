@@ -53,6 +53,19 @@ export function SolicitationDetailSheet({
         return String(value)
       }
     }
+    
+    if (config.field_type === 'time' || config.field_name.includes('time')) {
+      const timeStr = String(value);
+      const match = timeStr.match(/(\d{1,2}):(\d{2})/);
+      if (match) {
+        let hours = parseInt(match[1], 10);
+        const mins = match[2];
+        const ampmMatch = timeStr.match(/(AM|PM)/i);
+        let ampm = ampmMatch ? ampmMatch[1].toUpperCase() : (hours >= 12 ? 'PM' : 'AM');
+        hours = hours % 12 || 12;
+        return `${hours}:${mins} ${ampm}`;
+      }
+    }
 
     return String(value)
   }

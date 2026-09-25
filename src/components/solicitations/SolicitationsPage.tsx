@@ -55,6 +55,18 @@ import { toast } from 'sonner'
 
 const PAGE_SIZE = 100
 
+const formatEventTime = (time?: string | null) => {
+  if (!time) return null;
+  const match = time.match(/(\d{1,2}):(\d{2})/);
+  if (!match) return time;
+  let hours = parseInt(match[1], 10);
+  const mins = match[2];
+  const ampmMatch = time.match(/(AM|PM)/i);
+  let ampm = ampmMatch ? ampmMatch[1].toUpperCase() : (hours >= 12 ? 'PM' : 'AM');
+  hours = hours % 12 || 12;
+  return `${hours}:${mins} ${ampm}`;
+};
+
 const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   Pending: 'outline',
   Ongoing: 'default',
@@ -546,8 +558,12 @@ export default function SolicitationsPage() {
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                         {[
-                          s.event_date && new Date(s.event_date).toLocaleDateString('en-PH'),
-                          s.event_time
+                          s.event_date && new Date(s.event_date).toLocaleDateString('en-PH', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          }),
+                          formatEventTime(s.event_time)
                         ].filter(Boolean).join(' at ') || '—'}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">

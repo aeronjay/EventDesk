@@ -301,14 +301,6 @@ export default function SolicitationsPage() {
         {/* Left Column (Header + Search + Table) */}
         <div className="flex flex-col flex-1 min-w-0 min-h-0 gap-4 sm:gap-6">
           
-          {/* Page header */}
-          <div className="flex flex-col gap-1">
-            <h2 className="text-xl font-semibold text-foreground">Solicitations</h2>
-            <p className="text-sm text-muted-foreground">
-              Manage and track all solicitation records
-            </p>
-          </div>
-
           {/* Search + Filters bar */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative flex-1 max-w-sm">

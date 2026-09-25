@@ -66,7 +66,7 @@ export function SolicitationDetailPanel({
       <div className="flex items-start justify-between px-6 py-4 border-b border-border bg-muted/20">
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-3">
-            <span>Solicitation Details</span>
+            <span>{solicitation.organization_name || 'Solicitation Details'}</span>
             {solicitation.status && (
               <Badge variant={statusVariantMap[solicitation.status] ?? 'outline'}>
                 {solicitation.status}
@@ -74,21 +74,93 @@ export function SolicitationDetailPanel({
             )}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {solicitation.organization_name || 'Record'}{' '}
-            {solicitation.control_number && `· #${solicitation.control_number}`}
+            Control No: {solicitation.control_number || '—'}
           </p>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 -mr-2">
-          <X size={16} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => onEdit(solicitation)} className="h-8 w-8 text-muted-foreground hover:text-primary">
+            <Pencil size={16} />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 -mr-2">
+            <X size={16} />
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
         <div className="space-y-4">
           {fieldConfigs.map((config) => {
+            if (config.field_name === 'event_time' || config.field_name === 'contact_number') return null;
+
             const solicitRecord = solicitation as unknown as Record<string, unknown>
             const value = solicitRecord[config.field_name]
             const display = formatValue(config, value)
+
+            if (config.field_name === 'event_date') {
+              const timeConfig = fieldConfigs.find(c => c.field_name === 'event_time');
+              const timeValue = timeConfig ? solicitRecord[timeConfig.field_name] : null;
+              const timeDisplay = timeConfig ? formatValue(timeConfig, timeValue) : '—';
+
+              return (
+                <div key={config.field_name} className="grid grid-cols-2 gap-4">
+                  <div className="space-y-0.5">
+                    <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      {config.label}
+                    </dt>
+                    <dd className="text-sm text-foreground flex items-center gap-2 mt-1">
+                      <span className={display === '—' ? 'text-muted-foreground' : ''}>
+                        {display}
+                      </span>
+                    </dd>
+                  </div>
+                  {timeConfig && (
+                    <div className="space-y-0.5">
+                      <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        {timeConfig.label}
+                      </dt>
+                      <dd className="text-sm text-foreground flex items-center gap-2 mt-1">
+                        <span className={timeDisplay === '—' ? 'text-muted-foreground' : ''}>
+                          {timeDisplay}
+                        </span>
+                      </dd>
+                    </div>
+                  )}
+                </div>
+              )
+            }
+
+            if (config.field_name === 'contact_person') {
+              const numberConfig = fieldConfigs.find(c => c.field_name === 'contact_number');
+              const numberValue = numberConfig ? solicitRecord[numberConfig.field_name] : null;
+              const numberDisplay = numberConfig ? formatValue(numberConfig, numberValue) : '—';
+
+              return (
+                <div key={config.field_name} className="grid grid-cols-2 gap-4">
+                  <div className="space-y-0.5">
+                    <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      {config.label}
+                    </dt>
+                    <dd className="text-sm text-foreground flex items-center gap-2 mt-1">
+                      <span className={display === '—' ? 'text-muted-foreground' : ''}>
+                        {display}
+                      </span>
+                    </dd>
+                  </div>
+                  {numberConfig && (
+                    <div className="space-y-0.5">
+                      <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        {numberConfig.label}
+                      </dt>
+                      <dd className="text-sm text-foreground flex items-center gap-2 mt-1">
+                        <span className={numberDisplay === '—' ? 'text-muted-foreground' : ''}>
+                          {numberDisplay}
+                        </span>
+                      </dd>
+                    </div>
+                  )}
+                </div>
+              )
+            }
 
             return (
               <div key={config.field_name} className="space-y-0.5">
@@ -125,7 +197,7 @@ export function SolicitationDetailPanel({
 
           {/* Timestamps */}
           <Separator />
-          <div className="grid grid-cols-2 gap-4 pt-2">
+          <div className="pt-2">
             <div className="space-y-0.5">
               <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Created
@@ -137,24 +209,13 @@ export function SolicitationDetailPanel({
                 })}
               </dd>
             </div>
-            <div className="space-y-0.5">
-              <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Updated
-              </dt>
-              <dd className="text-sm text-muted-foreground mt-1">
-                {new Date(solicitation.updated_at).toLocaleString('en-PH', {
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                })}
-              </dd>
-            </div>
           </div>
         </div>
       </div>
 
       <Separator />
 
-      <div className="flex items-center justify-between px-6 py-4 bg-muted/10">
+      <div className="flex items-center justify-start px-6 py-4 bg-muted/10">
         <Button
           variant="outline"
           size="sm"
@@ -163,10 +224,6 @@ export function SolicitationDetailPanel({
         >
           <Trash2 size={14} />
           Delete
-        </Button>
-        <Button size="sm" className="gap-2" onClick={() => onEdit(solicitation)}>
-          <Pencil size={14} />
-          Edit
         </Button>
       </div>
     </div>

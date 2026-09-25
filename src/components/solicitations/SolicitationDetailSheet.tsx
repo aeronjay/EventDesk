@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Pencil, Trash2 } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   Pending: 'outline',
@@ -37,6 +38,7 @@ export function SolicitationDetailSheet({
   onEdit,
   onDelete,
 }: SolicitationDetailSheetProps) {
+  const { isSuperAdmin } = useAuth()
   if (!solicitation) return null
 
   const formatValue = (config: FieldConfig, value: unknown): string => {
@@ -162,15 +164,19 @@ export function SolicitationDetailSheet({
         <Separator />
 
         <div className="flex items-center justify-between px-6 py-4">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 text-destructive hover:text-destructive"
-            onClick={() => onDelete(solicitation)}
-          >
-            <Trash2 size={14} />
-            Delete
-          </Button>
+          <div>
+            {isSuperAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-destructive hover:text-destructive"
+                onClick={() => onDelete(solicitation)}
+              >
+                <Trash2 size={14} />
+                Delete
+              </Button>
+            )}
+          </div>
           <Button size="sm" className="gap-2" onClick={() => onEdit(solicitation)}>
             <Pencil size={14} />
             Edit

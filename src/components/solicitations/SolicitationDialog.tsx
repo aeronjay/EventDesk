@@ -267,7 +267,36 @@ export function SolicitationDialog({
                 onValueChange={(v) => updateField('control_number_color', v === 'none' ? '' : (v ?? ''))}
               >
                 <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Group/Color" />
+                  <SelectValue placeholder="Group/Color">
+                    {formData.control_number_color && formData.control_number_color !== 'none' ? (
+                      (() => {
+                        const cm = config.color_mappings?.find(c => c.color === formData.control_number_color)
+                        if (cm) {
+                          return (
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-3 h-3 rounded-full border border-border"
+                                style={{ backgroundColor: cm.color }}
+                              />
+                              <span className="truncate">{cm.label}</span>
+                            </div>
+                          )
+                        }
+                        // Fallback if mapping was removed
+                        return (
+                           <div className="flex items-center gap-2">
+                             <div
+                               className="w-3 h-3 rounded-full border border-border"
+                               style={{ backgroundColor: formData.control_number_color }}
+                             />
+                             <span className="truncate">{formData.control_number_color}</span>
+                           </div>
+                        )
+                      })()
+                    ) : (
+                      'No Color'
+                    )}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No Color</SelectItem>

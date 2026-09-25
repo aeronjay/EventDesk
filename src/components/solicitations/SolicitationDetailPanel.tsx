@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Pencil, Trash2, X } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline' | 'success'> = {
   Pending: 'outline',
@@ -36,6 +37,7 @@ export function SolicitationDetailPanel({
   onClose,
   onStatusChange,
 }: SolicitationDetailPanelProps) {
+  const { isSuperAdmin } = useAuth()
   if (!solicitation) return null
 
   const statusOptions = fieldConfigs.find((c) => c.field_name === 'status')?.options ?? []
@@ -258,15 +260,17 @@ export function SolicitationDetailPanel({
       <Separator />
 
       <div className="flex items-center justify-start px-6 py-4 bg-muted/10">
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2 text-destructive hover:text-destructive"
-          onClick={() => onDelete(solicitation)}
-        >
-          <Trash2 size={14} />
-          Delete
-        </Button>
+        {isSuperAdmin && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-destructive hover:text-destructive"
+            onClick={() => onDelete(solicitation)}
+          >
+            <Trash2 size={14} />
+            Delete
+          </Button>
+        )}
       </div>
     </div>
   )

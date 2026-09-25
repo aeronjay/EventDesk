@@ -287,91 +287,76 @@ export function FieldConfigSheet({
             )}
 
             {/* Color Mappings */}
-            <div className="space-y-3 pt-2">
-              <Label>Color & Group Mapping</Label>
-              <p className="text-xs text-muted-foreground -mt-1">
-                Define available colors and labels (e.g., "Group A") that users can pick for this field.
-              </p>
-
-              {colorMappings.length > 0 ? (
-                <div className="space-y-2">
-                  {colorMappings.map((cm, idx) => (
-                    <div key={idx} className="flex items-center gap-2 bg-muted/50 p-2 rounded-md">
-                      <div className="flex-1 flex items-center gap-2">
-                        <div 
-                          className="w-4 h-4 rounded-full border border-border" 
-                          style={{ backgroundColor: cm.color }} 
-                        />
-                        <span className="text-sm font-medium">{cm.label}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMapping(idx)}
-                        className="rounded-full p-1 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground italic">
-                  No color mappings added yet
+            {fieldConfig.field_name === 'control_number' && (
+              <div className="space-y-3 pt-2">
+                <Label>Color & Group Mapping</Label>
+                <p className="text-xs text-muted-foreground -mt-1">
+                  Define available colors and labels (e.g., "Group A") that users can pick for this field.
                 </p>
-              )}
 
-              <div className="flex flex-col gap-2 mt-2 border rounded-md p-3 bg-muted/20">
-                <div className="flex gap-2">
-                  <Select value={newMappingColor} onValueChange={(v) => v && setNewMappingColor(v)}>
-                    <SelectTrigger className="w-[120px] h-8 text-sm">
-                      <SelectValue placeholder="Color" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="#eab308">
-                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#eab308]" />Yellow</div>
-                      </SelectItem>
-                      <SelectItem value="#3b82f6">
-                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#3b82f6]" />Blue</div>
-                      </SelectItem>
-                      <SelectItem value="#22c55e">
-                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#22c55e]" />Green</div>
-                      </SelectItem>
-                      <SelectItem value="#ef4444">
-                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#ef4444]" />Red</div>
-                      </SelectItem>
-                      <SelectItem value="#8b5cf6">
-                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#8b5cf6]" />Purple</div>
-                      </SelectItem>
-                      <SelectItem value="#f97316">
-                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#f97316]" />Orange</div>
-                      </SelectItem>
-                      <SelectItem value="#64748b">
-                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#64748b]" />Gray</div>
-                      </SelectItem>
-                      <SelectItem value="#ec4899">
-                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#ec4899]" />Pink</div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    placeholder="Label (e.g. Group A)"
-                    value={newMappingLabel}
-                    onChange={(e) => setNewMappingLabel(e.target.value)}
-                    className="flex-1 text-sm h-8"
-                  />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className="h-8 gap-1"
-                    onClick={handleAddMapping}
-                    disabled={!newMappingLabel.trim()}
-                  >
-                    <Plus size={14} /> Add
-                  </Button>
+                {colorMappings.length > 0 ? (
+                  <div className="space-y-2">
+                    {colorMappings.map((cm, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-muted/50 p-2 rounded-md">
+                        <div className="flex-1 flex items-center gap-2">
+                          <div 
+                            className="w-4 h-4 rounded-full border border-border" 
+                            style={{ backgroundColor: cm.color }} 
+                          />
+                          <span className="text-sm font-medium">{cm.label}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMapping(idx)}
+                          className="rounded-full p-1 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    No color mappings added yet
+                  </p>
+                )}
+
+                <div className="flex flex-col gap-2 mt-2 border rounded-md p-3 bg-muted/20">
+                  <div className="flex gap-2">
+                    <div className="flex items-center gap-2 border rounded-md px-2 bg-background h-8">
+                      <input
+                        type="color"
+                        value={newMappingColor}
+                        onChange={(e) => setNewMappingColor(e.target.value)}
+                        className="w-5 h-5 p-0 border-0 rounded cursor-pointer"
+                      />
+                      <Input
+                        value={newMappingColor}
+                        onChange={(e) => setNewMappingColor(e.target.value)}
+                        placeholder="#000000"
+                        className="w-20 border-0 focus-visible:ring-0 px-1 text-sm h-7"
+                      />
+                    </div>
+                    <Input
+                      placeholder="Label (e.g. Group A)"
+                      value={newMappingLabel}
+                      onChange={(e) => setNewMappingLabel(e.target.value)}
+                      className="flex-1 text-sm h-8"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="h-8 gap-1"
+                      onClick={handleAddMapping}
+                      disabled={!newMappingLabel.trim()}
+                    >
+                      <Plus size={14} /> Add
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 

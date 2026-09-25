@@ -53,6 +53,7 @@ import { SolicitationDialog } from './SolicitationDialog.tsx'
 import { SolicitationDetailPanel } from './SolicitationDetailPanel.tsx'
 import { DeleteDialog } from './DeleteDialog.tsx'
 import { toast } from 'sonner'
+import { useAuth } from '@/contexts/AuthContext'
 
 const PAGE_SIZE = 100
 
@@ -76,6 +77,7 @@ const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' |
 }
 
 export default function SolicitationsPage({ showHistory = false }: { showHistory?: boolean }) {
+  const { isSuperAdmin } = useAuth()
   const [solicitations, setSolicitations] = useState<Solicitation[]>([])
   const [fieldConfigs, setFieldConfigs] = useState<FieldConfig[]>([])
   const [loading, setLoading] = useState(true)
@@ -735,14 +737,18 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
                               <Pencil size={14} className="mr-2" />
                               Edit
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={(e) => { e.stopPropagation(); handleDeleteClick(s) }}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 size={14} className="mr-2" />
-                              Delete
-                            </DropdownMenuItem>
+                            {isSuperAdmin && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteClick(s) }}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 size={14} className="mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

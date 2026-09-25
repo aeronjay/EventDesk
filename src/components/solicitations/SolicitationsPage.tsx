@@ -48,7 +48,7 @@ import {
   ChevronRight,
   Filter,
 } from 'lucide-react'
-import { SolicitationSheet } from './SolicitationSheet.tsx'
+import { SolicitationDialog } from './SolicitationDialog.tsx'
 import { SolicitationDetailPanel } from './SolicitationDetailPanel.tsx'
 import { DeleteDialog } from './DeleteDialog.tsx'
 import { toast } from 'sonner'
@@ -714,8 +714,8 @@ export default function SolicitationsPage() {
       )}
       </div>
 
-      {/* Sheets & Dialogs */}
-      <SolicitationSheet
+      {/* Dialogs */}
+      <SolicitationDialog
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         solicitation={editingSolicitation}

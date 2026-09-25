@@ -5,7 +5,7 @@ import {
   type Solicitation,
 } from '@/lib/solicitations'
 import { fetchFieldConfigs, type FieldConfig } from '@/lib/fieldConfigs'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -30,6 +30,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import { Label } from '@/components/ui/label'
 import {
   Plus,
   Search,
@@ -61,8 +67,19 @@ export default function SolicitationsPage() {
   const [fieldConfigs, setFieldConfigs] = useState<FieldConfig[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [filterType, setFilterType] = useState<string>('all')
+  const [filterStatus, setFilterStatus] = useState<string>('all')
+  
+  const [eventDateFrom, setEventDateFrom] = useState<string>('')
+  const [eventDateTo, setEventDateTo] = useState<string>('')
+  const [receivedDateFrom, setReceivedDateFrom] = useState<string>('')
+  const [receivedDateTo, setReceivedDateTo] = useState<string>('')
+  const [createdDateFrom, setCreatedDateFrom] = useState<string>('')
+  const [createdDateTo, setCreatedDateTo] = useState<string>('')
+  const [sortBy, setSortBy] = useState<string>('event_asc')
+  
   const [currentPage, setCurrentPage] = useState(1)
+  const [filterOpen, setFilterOpen] = useState(false)
 
   // Sheet states
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -100,7 +117,12 @@ export default function SolicitationsPage() {
     return config?.options ?? []
   }, [fieldConfigs])
 
-  // Filter + search
+  const statusOptions = useMemo(() => {
+    const config = fieldConfigs.find((c) => c.field_name === 'status')
+    return config?.options ?? []
+  }, [fieldConfigs])
+
+  // Filter + search + sort
   const filtered = useMemo(() => {
     let result = solicitations
 
@@ -116,12 +138,80 @@ export default function SolicitationsPage() {
       )
     }
 
-    if (typeFilter !== 'all') {
-      result = result.filter((s) => s.type === typeFilter)
+    const getSortTime = (s: Solicitation, sortType: string) => {
+       if (sortType.startsWith('event')) {
+          if (!s.event_date) return null
+          const d = new Date(s.event_date)
+          if (s.event_time) {
+            const timeMatch = s.event_time.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i)
+            if (timeMatch) {
+               let hours = parseInt(timeMatch[1], 10)
+               const mins = parseInt(timeMatch[2], 10)
+               const ampm = timeMatch[3]?.toUpperCase()
+               if (ampm === 'PM' && hours < 12) hours += 12
+               if (ampm === 'AM' && hours === 12) hours = 0
+               d.setHours(hours, mins, 0, 0)
+            }
+          }
+          return d.getTime()
+       } else if (sortType.startsWith('received')) {
+          return s.date_received ? new Date(s.date_received).getTime() : null
+       } else if (sortType.startsWith('created')) {
+          return s.created_at ? new Date(s.created_at).getTime() : null
+       }
+       return null
     }
 
-    return result
-  }, [solicitations, searchQuery, typeFilter])
+    let itemsWithTime = result.map(s => ({ item: s, time: getSortTime(s, sortBy) }))
+
+    if (filterType !== 'all') {
+      itemsWithTime = itemsWithTime.filter((x) => x.item.type === filterType)
+    }
+    if (filterStatus !== 'all') {
+      itemsWithTime = itemsWithTime.filter((x) => x.item.status === filterStatus)
+    }
+
+    const applyDateFilter = (from: string, to: string, dateGetter: (s: Solicitation) => number | null) => {
+        if (from) {
+          const fromTime = new Date(from).getTime()
+          itemsWithTime = itemsWithTime.filter(x => {
+            const t = dateGetter(x.item)
+            return t !== null && t >= fromTime
+          })
+        }
+        if (to) {
+          const toDate = new Date(to)
+          toDate.setHours(23, 59, 59, 999)
+          const toTime = toDate.getTime()
+          itemsWithTime = itemsWithTime.filter(x => {
+            const t = dateGetter(x.item)
+            return t !== null && t <= toTime
+          })
+        }
+    }
+
+    const hasEventFilter = eventDateFrom || eventDateTo
+    const hasReceivedFilter = receivedDateFrom || receivedDateTo
+    const hasCreatedFilter = createdDateFrom || createdDateTo
+
+    if (hasEventFilter) {
+       applyDateFilter(eventDateFrom, eventDateTo, (s) => getSortTime(s, 'event'))
+    } else if (hasReceivedFilter) {
+       applyDateFilter(receivedDateFrom, receivedDateTo, (s) => getSortTime(s, 'received'))
+    } else if (hasCreatedFilter) {
+       applyDateFilter(createdDateFrom, createdDateTo, (s) => getSortTime(s, 'created'))
+    }
+
+    itemsWithTime.sort((a, b) => {
+        if (a.time === null && b.time === null) return 0
+        if (a.time === null) return 1
+        if (b.time === null) return -1
+        
+        return sortBy.endsWith('_asc') ? a.time - b.time : b.time - a.time
+    })
+
+    return itemsWithTime.map(x => x.item)
+  }, [solicitations, searchQuery, filterType, filterStatus, eventDateFrom, eventDateTo, receivedDateFrom, receivedDateTo, createdDateFrom, createdDateTo, sortBy])
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
@@ -133,7 +223,7 @@ export default function SolicitationsPage() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, typeFilter])
+  }, [searchQuery, filterType, filterStatus, eventDateFrom, eventDateTo, receivedDateFrom, receivedDateTo, createdDateFrom, createdDateTo, sortBy])
 
   const handleAdd = () => {
     setEditingSolicitation(null)
@@ -174,7 +264,15 @@ export default function SolicitationsPage() {
     loadData()
   }
 
-  const hasActiveFilters = typeFilter !== 'all' || searchQuery.trim() !== ''
+  const hasEventFilter = eventDateFrom !== '' || eventDateTo !== ''
+  const hasReceivedFilter = receivedDateFrom !== '' || receivedDateTo !== ''
+  const hasCreatedFilter = createdDateFrom !== '' || createdDateTo !== ''
+
+  const disableEvent = hasReceivedFilter || hasCreatedFilter
+  const disableReceived = hasEventFilter || hasCreatedFilter
+  const disableCreated = hasEventFilter || hasReceivedFilter
+
+  const hasActiveFilters = filterType !== 'all' || filterStatus !== 'all' || hasEventFilter || hasReceivedFilter || hasCreatedFilter || sortBy !== 'event_asc' || searchQuery.trim() !== ''
 
   return (
     <div className="flex flex-col h-full gap-6 p-6 min-h-0">
@@ -207,24 +305,113 @@ export default function SolicitationsPage() {
 
 
 
-        {typeOptions.length > 0 && (
-          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v ?? 'all')}>
-            <SelectTrigger id="filter-type" className="w-[160px]">
-              <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-                <Filter size={14} className="text-muted-foreground shrink-0" />
-                <SelectValue placeholder="Type" className="truncate" />
+        <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+          <PopoverTrigger className={buttonVariants({ variant: 'outline', className: 'gap-2' })}>
+            <Filter size={16} />
+            Filters
+            {(filterType !== 'all' || filterStatus !== 'all' || hasEventFilter || hasReceivedFilter || hasCreatedFilter || sortBy !== 'event_asc') && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 rounded-sm">Active</Badge>
+            )}
+          </PopoverTrigger>
+          <PopoverContent className="w-[320px] p-4" align="start">
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+              <h4 className="font-semibold leading-none mb-3">Filters & Sorting</h4>
+
+              <div className="space-y-2">
+                <Label>Sort By</Label>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="event_asc">Event Date (Ascending)</SelectItem>
+                    <SelectItem value="event_desc">Event Date (Descending)</SelectItem>
+                    <SelectItem value="received_asc">Date Received (Ascending)</SelectItem>
+                    <SelectItem value="received_desc">Date Received (Descending)</SelectItem>
+                    <SelectItem value="created_asc">Date Created (Ascending)</SelectItem>
+                    <SelectItem value="created_desc">Date Created (Descending)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {typeOptions.map((opt) => (
-                <SelectItem key={opt} value={opt}>
-                  {opt}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+
+              <div className="space-y-2">
+                <Label>Type</Label>
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    {typeOptions.map((opt) => (
+                      <SelectItem key={opt} value={opt}>
+                        {opt}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    {statusOptions.map((opt) => (
+                      <SelectItem key={opt} value={opt}>
+                        {opt}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className={`space-y-2 p-3 border rounded-md ${disableEvent ? 'opacity-50 pointer-events-none' : ''}`}>
+                <Label>Event Date Range</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input type="date" value={eventDateFrom} onChange={(e) => setEventDateFrom(e.target.value)} title="From" />
+                  <Input type="date" value={eventDateTo} onChange={(e) => setEventDateTo(e.target.value)} title="To" />
+                </div>
+              </div>
+
+              <div className={`space-y-2 p-3 border rounded-md ${disableReceived ? 'opacity-50 pointer-events-none' : ''}`}>
+                <Label>Date Received Range</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input type="date" value={receivedDateFrom} onChange={(e) => setReceivedDateFrom(e.target.value)} title="From" />
+                  <Input type="date" value={receivedDateTo} onChange={(e) => setReceivedDateTo(e.target.value)} title="To" />
+                </div>
+              </div>
+
+              <div className={`space-y-2 p-3 border rounded-md ${disableCreated ? 'opacity-50 pointer-events-none' : ''}`}>
+                <Label>Date Created Range</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input type="date" value={createdDateFrom} onChange={(e) => setCreatedDateFrom(e.target.value)} title="From" />
+                  <Input type="date" value={createdDateTo} onChange={(e) => setCreatedDateTo(e.target.value)} title="To" />
+                </div>
+              </div>
+
+              <Button 
+                variant="outline" 
+                className="w-full mt-4"
+                onClick={() => {
+                  setFilterType('all')
+                  setFilterStatus('all')
+                  setEventDateFrom('')
+                  setEventDateTo('')
+                  setReceivedDateFrom('')
+                  setReceivedDateTo('')
+                  setCreatedDateFrom('')
+                  setCreatedDateTo('')
+                  setSortBy('event_asc')
+                }}
+              >
+                Reset Filters
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
 
         {hasActiveFilters && (
           <Button
@@ -232,11 +419,19 @@ export default function SolicitationsPage() {
             size="sm"
             onClick={() => {
               setSearchQuery('')
-              setTypeFilter('all')
+              setFilterType('all')
+              setFilterStatus('all')
+              setEventDateFrom('')
+              setEventDateTo('')
+              setReceivedDateFrom('')
+              setReceivedDateTo('')
+              setCreatedDateFrom('')
+              setCreatedDateTo('')
+              setSortBy('event_asc')
             }}
             className="text-muted-foreground"
           >
-            Clear filters
+            Clear all
           </Button>
         )}
       </div>

@@ -20,6 +20,7 @@ export interface Solicitation {
   voters_turnout: string | null
   additional_note: string | null
   control_number_color: string | null
+  attachments: { name: string, url: string, key: string }[] | null
   created_by: string | null
   created_at: string
   updated_at: string

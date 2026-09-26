@@ -4,6 +4,7 @@ import {
   updateSolicitation,
   type Solicitation,
 } from '@/lib/solicitations'
+import { FileUpload, type Attachment } from './FileUpload'
 import type { FieldConfig } from '@/lib/fieldConfigs'
 import { useAuth } from '@/contexts/AuthContext'
 import {
@@ -54,6 +55,7 @@ export function SolicitationDialog({
   const { user } = useAuth()
   const isEdit = !!solicitation
   const [formData, setFormData] = useState<Record<string, string>>({})
+  const [attachments, setAttachments] = useState<Attachment[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
 
@@ -78,6 +80,12 @@ export function SolicitationDialog({
           data.control_number_color = solicitation.control_number_color
         }
         setFormData(data)
+        
+        let atts = solicitation.attachments || []
+        if (typeof atts === 'string') {
+          try { atts = JSON.parse(atts) } catch (e) { atts = [] }
+        }
+        setAttachments(atts as Attachment[])
       } else {
         // Blank form
         const data: Record<string, string> = {}
@@ -85,6 +93,7 @@ export function SolicitationDialog({
           data[config.field_name] = config.default_value ?? ''
         })
         setFormData(data)
+        setAttachments([])
       }
       setErrors({})
     }
@@ -137,6 +146,8 @@ export function SolicitationDialog({
       } else {
         record.control_number_color = null
       }
+      
+      (record as any).attachments = attachments
 
       let savedRecord: Solicitation
       if (isEdit && solicitation) {
@@ -350,6 +361,10 @@ export function SolicitationDialog({
         <div className="flex-1 min-h-0 overflow-y-auto px-6">
           <form id="solicitation-form" onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 py-4">
             {fieldConfigs.map(renderField)}
+            <div className="md:col-span-4 mt-2">
+              <Label className="text-sm block mb-2">Attachments</Label>
+              <FileUpload attachments={attachments} onChange={setAttachments} />
+            </div>
           </form>
         </div>
 

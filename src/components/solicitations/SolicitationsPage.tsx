@@ -48,6 +48,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  Paperclip,
 } from 'lucide-react'
 import { SolicitationDialog } from './SolicitationDialog.tsx'
 import { SolicitationDetailPanel } from './SolicitationDetailPanel.tsx'
@@ -609,6 +610,7 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
                     <TableHead className="whitespace-nowrap min-w-[150px]">Remarks</TableHead>
                     <TableHead className="whitespace-nowrap">Voters Turn Out</TableHead>
                     <TableHead className="whitespace-nowrap min-w-[150px]">Additional Note</TableHead>
+                    <TableHead className="w-[80px]">Files</TableHead>
                     <TableHead className="w-[50px] sticky right-0 bg-muted/30" />
                   </TableRow>
                 </TableHeader>
@@ -719,6 +721,16 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
                         {s.additional_note || '—'}
+                      </TableCell>
+                      <TableCell>
+                        {s.attachments && s.attachments.length > 0 ? (
+                          <Badge variant="secondary" className="gap-1 px-1.5 font-normal text-xs">
+                            <Paperclip size={12} />
+                            {s.attachments.length}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="sticky right-0 bg-card group-hover:bg-muted/50 transition-colors">
                         <DropdownMenu>

@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Pencil, Trash2, X } from 'lucide-react'
+import { Pencil, Trash2, X, FileText, Image as ImageIcon, File, Download } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
 const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline' | 'success'> = {
@@ -238,6 +238,51 @@ export function SolicitationDetailPanel({
               </div>
             )
           })}
+
+          {/* Attachments */}
+          {(() => {
+            let atts = solicitation.attachments
+            if (typeof atts === 'string') {
+              try { atts = JSON.parse(atts) } catch (e) { atts = [] }
+            }
+            if (!Array.isArray(atts) || atts.length === 0) return null
+            
+            return (
+              <>
+                <Separator />
+                <div className="pt-2">
+                  <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
+                    Attachments
+                  </dt>
+                  <dd className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {atts.map((att: any, i: number) => {
+                      const name = att.name || 'Attachment'
+                      const url = att.url || '#'
+                      const isImage = name.match(/\.(jpeg|jpg|png|gif)$/i)
+                      const isPdf = name.endsWith('.pdf')
+                    return (
+                      <a 
+                        key={i} 
+                        href={att.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-3 p-2 rounded-md border bg-muted/20 hover:bg-muted/40 transition-colors group"
+                      >
+                        <div className="shrink-0 p-2 bg-background rounded-md shadow-sm">
+                          {isImage ? <ImageIcon className="w-4 h-4 text-blue-500" /> : isPdf ? <FileText className="w-4 h-4 text-red-500" /> : <File className="w-4 h-4 text-primary" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate text-foreground">{att.name}</p>
+                        </div>
+                        <Download className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                      </a>
+                    )
+                  })}
+                </dd>
+              </div>
+            </>
+          )
+        })()}
 
           {/* Timestamps */}
           <Separator />

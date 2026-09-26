@@ -599,13 +599,14 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
                     <TableHead className="whitespace-nowrap">Control No.</TableHead>
                     <TableHead className="whitespace-nowrap">Date Received</TableHead>
                     <TableHead className="whitespace-nowrap">Organization</TableHead>
+                    <TableHead className="whitespace-nowrap">Sub Area</TableHead>
                     <TableHead className="whitespace-nowrap">Event</TableHead>
                     <TableHead className="whitespace-nowrap">Date & Time</TableHead>
+                    <TableHead className="whitespace-nowrap">Status</TableHead>
                     <TableHead className="whitespace-nowrap min-w-[150px]">Request</TableHead>
                     <TableHead className="whitespace-nowrap">Venue</TableHead>
                     <TableHead className="whitespace-nowrap">Contact Person</TableHead>
                     <TableHead className="whitespace-nowrap">Contact Number</TableHead>
-                    <TableHead className="whitespace-nowrap">Status</TableHead>
                     <TableHead className="whitespace-nowrap">Recom</TableHead>
                     <TableHead className="whitespace-nowrap min-w-[150px]">Remarks</TableHead>
                     <TableHead className="whitespace-nowrap">Voters Turn Out</TableHead>
@@ -660,6 +661,9 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
                         <div className="font-medium text-sm">{s.organization_name || '—'}</div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {s.sub_area || '—'}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                         {s.event || '—'}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
@@ -671,18 +675,6 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
                           }),
                           formatEventTime(s.event_time)
                         ].filter(Boolean).join(' at ') || '—'}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                        {s.request || '—'}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                        {s.venue || '—'}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                        {s.contact_person || '—'}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                        {s.contact_number || '—'}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         <DropdownMenu>
@@ -710,6 +702,19 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                        {s.request || '—'}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {s.venue || '—'}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {s.contact_person || '—'}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {s.contact_number || '—'}
+                      </TableCell>
+
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                         {s.recom || '—'}
                       </TableCell>

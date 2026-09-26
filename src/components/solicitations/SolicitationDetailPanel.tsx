@@ -263,7 +263,7 @@ export function SolicitationDetailPanel({
                     return (
                       <a 
                         key={i} 
-                        href={att.url}
+                        href={url}
                         target="_blank"
                         rel="noreferrer"
                         className="flex items-center gap-3 p-2 rounded-md border bg-muted/20 hover:bg-muted/40 transition-colors group"
@@ -272,7 +272,7 @@ export function SolicitationDetailPanel({
                           {isImage ? <ImageIcon className="w-4 h-4 text-blue-500" /> : isPdf ? <FileText className="w-4 h-4 text-red-500" /> : <File className="w-4 h-4 text-primary" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate text-foreground">{att.name}</p>
+                          <p className="text-sm font-medium truncate text-foreground">{name}</p>
                         </div>
                         <Download className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                       </a>

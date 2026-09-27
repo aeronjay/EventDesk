@@ -76,8 +76,11 @@ export default function DashboardOverview() {
     const todayEnd = new Date()
     todayEnd.setHours(23, 59, 59, 999)
 
+    const activeStatuses = ['pending', 'ongoing']
+    const isActive = (s: Solicitation) => s.status && activeStatuses.includes(s.status.toLowerCase())
+
     const todays = solicitations.filter(s => {
-      if (!s.event_date) return false
+      if (!s.event_date || !isActive(s)) return false
       const d = new Date(s.event_date)
       return d >= todayStart && d <= todayEnd
     })
@@ -87,7 +90,7 @@ export default function DashboardOverview() {
 
     const upcoming = solicitations
       .filter(s => {
-        if (!s.event_date) return false
+        if (!s.event_date || !isActive(s)) return false
         const d = new Date(s.event_date)
         return d > todayEnd && d <= threeDaysFromNow
       })

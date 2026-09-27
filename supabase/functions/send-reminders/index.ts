@@ -61,6 +61,12 @@ serve(async (req) => {
       };
 
       for (const s of solicitations) {
+        // Only include pending or ongoing statuses
+        const status = s.status ? s.status.toLowerCase() : '';
+        if (status !== 'pending' && status !== 'ongoing') {
+          continue;
+        }
+
         if (s.event_date === todayStr) {
           grouped.today.push(s);
         } else if (s.event_date === tomorrowStr) {

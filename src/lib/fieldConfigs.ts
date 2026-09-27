@@ -24,6 +24,7 @@ export async function fetchFieldConfigs(): Promise<FieldConfig[]> {
   const { data, error } = await supabase
     .from('field_configs')
     .select('*')
+    .neq('field_name', 'enable_excel_download')
     .order('display_order', { ascending: true })
 
   if (error) throw error

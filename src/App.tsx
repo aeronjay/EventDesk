@@ -5,6 +5,7 @@ import Auth from './components/Auth'
 import Dashboard from './components/Dashboard'
 import SolicitationsPage from './components/solicitations/SolicitationsPage'
 import AdminPage from './components/admin/AdminPage'
+import SettingsPage from './components/settings/SettingsPage'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -48,14 +49,7 @@ function AppRoutes() {
           path="history"
           element={<SolicitationsPage key="history" showHistory={true} />}
         />
-        <Route
-          path="settings"
-          element={
-            <div className="flex flex-1 items-center justify-center p-6 text-muted-foreground">
-              Settings — coming soon
-            </div>
-          }
-        />
+        <Route path="settings" element={<SettingsPage />} />
         <Route path="admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

@@ -59,48 +59,57 @@ export function SolicitationDialog({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
 
-  // Initialize form data when dialog opens
+  const [prevSolId, setPrevSolId] = useState<string | null | undefined>(undefined)
+
+  // Initialize form data when dialog opens, but only if the solicitation being viewed has changed
   useEffect(() => {
     if (open) {
-      if (solicitation) {
-        // Populate from existing solicitation
-        const data: Record<string, string> = {}
-        const solicitRecord = solicitation as unknown as Record<string, unknown>
-        fieldConfigs.forEach((config) => {
-          let value = solicitRecord[config.field_name]
-          if (config.field_type === 'time' && typeof value === 'string') {
-             const match = value.match(/^(\d{2}:\d{2}(:\d{2})?)/)
-             if (match) {
-                 value = match[1]
-             }
-          }
-          data[config.field_name] = value != null ? String(value) : ''
-        })
-        if (solicitation.control_number_color) {
-          data.control_number_color = solicitation.control_number_color
-        }
-        setFormData(data)
+      const currentId = solicitation?.id ?? null
+      
+      if (currentId !== prevSolId) {
+        setPrevSolId(currentId)
         
-        let atts = solicitation.attachments || []
-        if (typeof atts === 'string') {
-          try { atts = JSON.parse(atts) } catch (e) { atts = [] }
+        if (solicitation) {
+          // Populate from existing solicitation
+          const data: Record<string, string> = {}
+          const solicitRecord = solicitation as unknown as Record<string, unknown>
+          fieldConfigs.forEach((config) => {
+            let value = solicitRecord[config.field_name]
+            if (config.field_type === 'time' && typeof value === 'string') {
+               const match = value.match(/^(\d{2}:\d{2}(:\d{2})?)/)
+               if (match) {
+                   value = match[1]
+               }
+            }
+            data[config.field_name] = value != null ? String(value) : ''
+          })
+          if (solicitation.control_number_color) {
+            data.control_number_color = solicitation.control_number_color
+          }
+          setFormData(data)
+          
+          let atts = solicitation.attachments || []
+          if (typeof atts === 'string') {
+            try { atts = JSON.parse(atts) } catch (e) { atts = [] }
+          }
+          setAttachments(atts as Attachment[])
+        } else {
+          // Blank form
+          const data: Record<string, string> = {}
+          fieldConfigs.forEach((config) => {
+            data[config.field_name] = config.default_value ?? ''
+          })
+          setFormData(data)
+          setAttachments([])
         }
-        setAttachments(atts as Attachment[])
-      } else {
-        // Blank form
-        const data: Record<string, string> = {}
-        fieldConfigs.forEach((config) => {
-          data[config.field_name] = config.default_value ?? ''
-        })
-        setFormData(data)
-        setAttachments([])
+        setErrors({})
       }
-      setErrors({})
     }
-  }, [open, solicitation, fieldConfigs])
+  }, [open, solicitation, fieldConfigs, prevSolId])
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {}
+    let firstErrorFieldId = ''
 
     fieldConfigs.forEach((config) => {
       const value = formData[config.field_name]?.trim() ?? ''
@@ -108,6 +117,7 @@ export function SolicitationDialog({
       // Required check
       if (config.is_required && !value) {
         newErrors[config.field_name] = `${config.label} is required`
+        if (!firstErrorFieldId) firstErrorFieldId = `field-${config.field_name}`
         return
       }
 
@@ -117,6 +127,7 @@ export function SolicitationDialog({
           const regex = new RegExp(config.validation_rule)
           if (!regex.test(value)) {
             newErrors[config.field_name] = `${config.label} format is invalid`
+            if (!firstErrorFieldId) firstErrorFieldId = `field-${config.field_name}`
           }
         } catch {
           // Invalid regex — skip
@@ -125,7 +136,24 @@ export function SolicitationDialog({
     })
 
     setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    
+    if (Object.keys(newErrors).length > 0) {
+      toast.error('Please check the form for errors')
+      
+      // Scroll to the first error
+      if (firstErrorFieldId) {
+        setTimeout(() => {
+          const el = document.getElementById(firstErrorFieldId)
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            el.focus()
+          }
+        }, 100)
+      }
+      return false
+    }
+    
+    return true
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -158,6 +186,11 @@ export function SolicitationDialog({
         toast.success('Solicitation created successfully')
       }
       onSaved(savedRecord, isEdit)
+      
+      // If it was an "Add" operation, force the form to reset so next time it's empty
+      if (!isEdit) {
+        setPrevSolId(undefined)
+      }
     } catch (err) {
       console.error(err)
       toast.error(isEdit ? 'Failed to update' : 'Failed to create')

@@ -44,3 +44,37 @@ export async function updateFieldConfig(
   if (error) throw error
   return data as FieldConfig
 }
+
+export async function getExcelDownloadSetting(): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('field_configs')
+    .select('is_required')
+    .eq('field_name', 'enable_excel_download')
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) {
+    const { error: insertError } = await supabase.from('field_configs').insert({
+      field_name: 'enable_excel_download',
+      label: 'Enable Excel Download',
+      field_type: 'text',
+      options: [],
+      is_required: true,
+      display_order: 999,
+      validation_rule: null,
+      default_value: null,
+      color_mappings: null
+    })
+    if (insertError) console.error('Failed to create excel setting', insertError)
+    return true
+  }
+  return data.is_required
+}
+
+export async function toggleExcelDownloadSetting(enabled: boolean) {
+  const { error } = await supabase
+    .from('field_configs')
+    .update({ is_required: enabled, updated_at: new Date().toISOString() })
+    .eq('field_name', 'enable_excel_download')
+  if (error) throw error
+}

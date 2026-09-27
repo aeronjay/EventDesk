@@ -7,6 +7,8 @@ import SolicitationsPage from './components/solicitations/SolicitationsPage'
 import AdminPage from './components/admin/AdminPage'
 import SettingsPage from './components/settings/SettingsPage'
 
+import DashboardOverview from './components/dashboard/DashboardOverview'
+
 function AppRoutes() {
   const { user, loading } = useAuth()
 
@@ -28,22 +30,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route element={<Dashboard />}>
-        <Route
-          index
-          element={
-            <div className="flex flex-1 items-center justify-center p-6">
-              <div className="text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <span className="text-2xl font-bold text-primary">Q</span>
-                </div>
-                <h2 className="text-lg font-semibold text-foreground mb-1">Welcome to QSolicit</h2>
-                <p className="text-sm text-muted-foreground max-w-xs">
-                  Navigate to <strong>Solicits</strong> to manage your solicitation records.
-                </p>
-              </div>
-            </div>
-          }
-        />
+        <Route index element={<DashboardOverview />} />
         <Route path="solicits" element={<SolicitationsPage key="solicits" showHistory={false} />} />
         <Route
           path="history"

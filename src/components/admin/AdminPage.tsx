@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import {
   fetchFieldConfigs,
   updateFieldConfig,
+  getExcelDownloadSetting,
+  toggleExcelDownloadSetting,
   type FieldConfig,
 } from '@/lib/fieldConfigs'
 import { useAuth } from '@/contexts/AuthContext'
@@ -16,6 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Pencil, Shield, Settings2 } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
 import { FieldConfigSheet } from './FieldConfigSheet.tsx'
 import { toast } from 'sonner'
 
@@ -26,11 +29,17 @@ export default function AdminPage() {
   const [editingConfig, setEditingConfig] = useState<FieldConfig | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
 
+  const [excelEnabled, setExcelEnabled] = useState(true)
+
   const loadConfigs = async () => {
     try {
       setLoading(true)
-      const configs = await fetchFieldConfigs()
-      setFieldConfigs(configs)
+      const [configs, excelSetting] = await Promise.all([
+        fetchFieldConfigs(),
+        getExcelDownloadSetting()
+      ])
+      setFieldConfigs(configs.filter(c => c.field_name !== 'enable_excel_download'))
+      setExcelEnabled(excelSetting)
     } catch (err) {
       console.error(err)
       toast.error('Failed to load field configurations')
@@ -58,6 +67,17 @@ export default function AdminPage() {
     } catch (err: any) {
       console.error(err)
       toast.error(`Failed to update: ${err.message || 'Unknown error'}`)
+    }
+  }
+
+  const handleToggleExcel = async (checked: boolean) => {
+    try {
+      setExcelEnabled(checked)
+      await toggleExcelDownloadSetting(checked)
+      toast.success(`Excel download ${checked ? 'enabled' : 'disabled'}`)
+    } catch (err) {
+      setExcelEnabled(!checked)
+      toast.error('Failed to update excel download setting')
     }
   }
 
@@ -90,11 +110,24 @@ export default function AdminPage() {
       <div>
         <div className="flex items-center gap-2 mb-1">
           <Settings2 size={20} className="text-primary" />
-          <h2 className="text-xl font-semibold text-foreground">Field Configuration</h2>
+          <h2 className="text-xl font-semibold text-foreground">Global Settings</h2>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Configure what values each solicitation field accepts. Changes apply to all users.
+        <p className="text-sm text-muted-foreground mb-4">
+          Configure application-wide settings and field constraints. Changes apply to all users.
         </p>
+
+        {/* Global toggles */}
+        <div className="rounded-xl border border-border bg-card p-4 mb-8 flex items-center justify-between shadow-sm">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Enable CSV/Excel Export</h3>
+            <p className="text-sm text-muted-foreground mt-0.5">Allow users to export solicitations to a CSV file from the dashboard.</p>
+          </div>
+          <Switch 
+            checked={excelEnabled} 
+            onCheckedChange={handleToggleExcel} 
+            disabled={loading}
+          />
+        </div>
       </div>
 
       {/* Table */}

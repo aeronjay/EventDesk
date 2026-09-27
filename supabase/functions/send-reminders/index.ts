@@ -45,7 +45,18 @@ serve(async (req) => {
     });
 
     for (const reminder of reminders) {
-      const { user_email, user_name, solicitations } = reminder;
+      let { user_email, user_name, solicitations } = reminder;
+
+      // Filter out done and discontinued statuses first
+      solicitations = solicitations.filter((s: any) => {
+        const status = s.status ? s.status.toLowerCase() : '';
+        return status !== 'done' && status !== 'discontinued';
+      });
+
+      // If no valid solicitations left for this user, skip sending email
+      if (solicitations.length === 0) {
+        continue;
+      }
 
       const now = new Date();
       // Adjust for Manila Time (UTC+8)
@@ -61,12 +72,6 @@ serve(async (req) => {
       };
 
       for (const s of solicitations) {
-        // Only include pending or ongoing statuses
-        const status = s.status ? s.status.toLowerCase() : '';
-        if (status !== 'pending' && status !== 'ongoing') {
-          continue;
-        }
-
         if (s.event_date === todayStr) {
           grouped.today.push(s);
         } else if (s.event_date === tomorrowStr) {

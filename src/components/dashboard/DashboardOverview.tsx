@@ -76,8 +76,11 @@ export default function DashboardOverview() {
     const todayEnd = new Date()
     todayEnd.setHours(23, 59, 59, 999)
 
-    const activeStatuses = ['pending', 'ongoing']
-    const isActive = (s: Solicitation) => s.status && activeStatuses.includes(s.status.toLowerCase())
+    const isActive = (s: Solicitation) => {
+      if (!s.status) return true;
+      const st = s.status.toLowerCase();
+      return st !== 'done' && st !== 'discontinued';
+    }
 
     const todays = solicitations.filter(s => {
       if (!s.event_date || !isActive(s)) return false

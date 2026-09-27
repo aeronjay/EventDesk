@@ -47,6 +47,83 @@ serve(async (req) => {
     for (const reminder of reminders) {
       const { user_email, user_name, solicitations } = reminder;
 
+      const now = new Date();
+      // Adjust for Manila Time (UTC+8)
+      const phTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+      const todayStr = phTime.toISOString().split('T')[0];
+      const tomorrow = new Date(phTime.getTime() + 24 * 60 * 60 * 1000);
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+      const grouped = {
+        today: [] as any[],
+        tomorrow: [] as any[],
+        upcoming: [] as any[]
+      };
+
+      for (const s of solicitations) {
+        if (s.event_date === todayStr) {
+          grouped.today.push(s);
+        } else if (s.event_date === tomorrowStr) {
+          grouped.tomorrow.push(s);
+        } else {
+          grouped.upcoming.push(s);
+        }
+      }
+
+      const sortByDate = (items: any[]) => items.sort((a, b) => {
+        const dateA = new Date(a.event_date || 0).getTime();
+        const dateB = new Date(b.event_date || 0).getTime();
+        return dateA - dateB;
+      });
+
+      grouped.today = sortByDate(grouped.today);
+      grouped.tomorrow = sortByDate(grouped.tomorrow);
+      grouped.upcoming = sortByDate(grouped.upcoming);
+
+      const renderGroup = (items: any[], title: string) => {
+        if (items.length === 0) return '';
+        return `
+          <div style="margin-bottom: 30px;">
+            <h3 style="color: #0f172a; margin-top: 0; margin-bottom: 12px; font-size: 16px; font-weight: 600; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0;">${title}</h3>
+            <table style="border-collapse: collapse; width: 100%; font-size: 13px; text-align: left;">
+              <thead>
+                <tr>
+                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">TYPE</th>
+                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">CTRL NO.</th>
+                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">ORGANIZATION</th>
+                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">EVENT</th>
+                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">DATE & TIME</th>
+                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">REQUEST</th>
+                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">VENUE</th>
+                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">CONTACT PERSON</th>
+                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">CONTACT NO.</th>
+                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">NOTE</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${items.map((s: any) => `
+                  <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 10px; vertical-align: top;"><span style="display: inline-block; background-color: #e0f2fe; color: #0284c7; padding: 4px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; text-transform: uppercase;">${s.type || '-'}</span></td>
+                    <td style="padding: 10px; vertical-align: top; font-family: monospace; color: #64748b; font-weight: 600;">${s.control_number || '-'}</td>
+                    <td style="padding: 10px; vertical-align: top; font-weight: 500; color: #1e293b;">${s.organization_name || '-'}</td>
+                    <td style="padding: 10px; vertical-align: top; font-weight: 500; color: #0284c7;">${s.event || '-'}</td>
+                    <td style="padding: 10px; vertical-align: top;">
+                      <div style="white-space: nowrap; color: #1e293b;">${s.event_date || '-'}</div>
+                      <div style="font-size: 11px; color: #64748b;">${s.event_time || ''}</div>
+                    </td>
+                    <td style="padding: 10px; vertical-align: top; color: #1e293b;">${s.request || '-'}</td>
+                    <td style="padding: 10px; vertical-align: top; color: #1e293b;">${s.venue || '-'}</td>
+                    <td style="padding: 10px; vertical-align: top; color: #1e293b;">${s.contact_person || '-'}</td>
+                    <td style="padding: 10px; vertical-align: top; color: #1e293b;">${s.contact_number || '-'}</td>
+                    <td style="padding: 10px; vertical-align: top; font-style: italic; color: #64748b; max-width: 200px;">${s.additional_note || '-'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      };
+
       const htmlContent = `
         <!DOCTYPE html>
         <html>
@@ -72,41 +149,9 @@ serve(async (req) => {
 
                   <tr>
                     <td style="padding: 20px; overflow-x: auto;">
-                      <table style="border-collapse: collapse; width: 100%; font-size: 13px; text-align: left;">
-                        <thead>
-                          <tr>
-                            <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 12px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">TYPE</th>
-                            <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 12px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">CTRL NO.</th>
-                            <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 12px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">ORGANIZATION</th>
-                            <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 12px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">EVENT</th>
-                            <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 12px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">DATE & TIME</th>
-                            <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 12px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">REQUEST</th>
-                            <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 12px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">VENUE</th>
-                            <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 12px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">CONTACT PERSON</th>
-                            <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 12px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">CONTACT NO.</th>
-                            <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 12px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">NOTE</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          ${solicitations.map((s: any) => `
-                            <tr style="border-bottom: 1px solid #e2e8f0;">
-                              <td style="padding: 12px; vertical-align: top;"><span style="display: inline-block; background-color: #e0f2fe; color: #0284c7; padding: 4px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; text-transform: uppercase;">${s.type || '-'}</span></td>
-                              <td style="padding: 12px; vertical-align: top; font-family: monospace; color: #64748b; font-weight: 600;">${s.control_number || '-'}</td>
-                              <td style="padding: 12px; vertical-align: top; font-weight: 500; color: #1e293b;">${s.organization_name || '-'}</td>
-                              <td style="padding: 12px; vertical-align: top; font-weight: 500; color: #0284c7;">${s.event || '-'}</td>
-                              <td style="padding: 12px; vertical-align: top;">
-                                <div style="white-space: nowrap; color: #1e293b;">${s.event_date || '-'}</div>
-                                <div style="font-size: 11px; color: #64748b;">${s.event_time || ''}</div>
-                              </td>
-                              <td style="padding: 12px; vertical-align: top; color: #1e293b;">${s.request || '-'}</td>
-                              <td style="padding: 12px; vertical-align: top; color: #1e293b;">${s.venue || '-'}</td>
-                              <td style="padding: 12px; vertical-align: top; color: #1e293b;">${s.contact_person || '-'}</td>
-                              <td style="padding: 12px; vertical-align: top; color: #1e293b;">${s.contact_number || '-'}</td>
-                              <td style="padding: 12px; vertical-align: top; font-style: italic; color: #64748b; max-width: 200px;">${s.additional_note || '-'}</td>
-                            </tr>
-                          `).join('')}
-                        </tbody>
-                      </table>
+                      ${renderGroup(grouped.today, 'Today')}
+                      ${renderGroup(grouped.tomorrow, 'Tomorrow')}
+                      ${renderGroup(grouped.upcoming, 'Upcoming in 5 Days')}
                     </td>
                   </tr>
 

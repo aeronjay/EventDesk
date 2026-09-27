@@ -47,11 +47,23 @@ serve(async (req) => {
     for (const reminder of reminders) {
       let { user_email, user_name, solicitations } = reminder;
 
-      // Filter out done and discontinued statuses first
-      solicitations = solicitations.filter((s: any) => {
-        const status = s.status ? s.status.toLowerCase() : '';
-        return status !== 'done' && status !== 'discontinued';
-      });
+      // The RPC 'get_reminders_to_send' does not return the 'status' column.
+      // We must fetch it manually to properly filter out 'done' and 'discontinued'.
+      if (solicitations && solicitations.length > 0) {
+        const ids = solicitations.map((s: any) => s.id);
+        const { data: statusData } = await supabase
+          .from('solicitations')
+          .select('id, status')
+          .in('id', ids);
+          
+        if (statusData) {
+          const statusMap = new Map(statusData.map(row => [row.id, row.status?.toLowerCase() || '']));
+          solicitations = solicitations.filter((s: any) => {
+            const status = statusMap.get(s.id) || '';
+            return status !== 'done' && status !== 'discontinued';
+          });
+        }
+      }
 
       // If no valid solicitations left for this user, skip sending email
       if (solicitations.length === 0) {

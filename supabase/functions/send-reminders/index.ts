@@ -108,41 +108,48 @@ serve(async (req) => {
         return `
           <div style="margin-bottom: 30px;">
             <h3 style="color: #0f172a; margin-top: 0; margin-bottom: 12px; font-size: 16px; font-weight: 600; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0;">${title}</h3>
-            <table style="border-collapse: collapse; width: 100%; font-size: 13px; text-align: left;">
-              <thead>
-                <tr>
-                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">TYPE</th>
-                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">CTRL NO.</th>
-                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">ORGANIZATION</th>
-                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">EVENT</th>
-                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">DATE & TIME</th>
-                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">REQUEST</th>
-                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">VENUE</th>
-                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">CONTACT PERSON</th>
-                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">CONTACT NO.</th>
-                  <th style="background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #cbd5e1; white-space: nowrap;">NOTE</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${items.map((s: any) => `
-                  <tr style="border-bottom: 1px solid #e2e8f0;">
-                    <td style="padding: 10px; vertical-align: top;"><span style="display: inline-block; background-color: #e0f2fe; color: #0284c7; padding: 4px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; text-transform: uppercase;">${s.type || '-'}</span></td>
-                    <td style="padding: 10px; vertical-align: top; font-family: monospace; color: #64748b; font-weight: 600;">${s.control_number || '-'}</td>
-                    <td style="padding: 10px; vertical-align: top; font-weight: 500; color: #1e293b;">${s.organization_name || '-'}</td>
-                    <td style="padding: 10px; vertical-align: top; font-weight: 500; color: #0284c7;">${s.event || '-'}</td>
-                    <td style="padding: 10px; vertical-align: top;">
-                      <div style="white-space: nowrap; color: #1e293b;">${s.event_date || '-'}</div>
-                      <div style="font-size: 11px; color: #64748b;">${s.event_time || ''}</div>
-                    </td>
-                    <td style="padding: 10px; vertical-align: top; color: #1e293b;">${s.request || '-'}</td>
-                    <td style="padding: 10px; vertical-align: top; color: #1e293b;">${s.venue || '-'}</td>
-                    <td style="padding: 10px; vertical-align: top; color: #1e293b;">${s.contact_person || '-'}</td>
-                    <td style="padding: 10px; vertical-align: top; color: #1e293b;">${s.contact_number || '-'}</td>
-                    <td style="padding: 10px; vertical-align: top; font-style: italic; color: #64748b; max-width: 200px;">${s.additional_note || '-'}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
+            <div>
+              ${items.map((s: any) => `
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                  <div style="margin-bottom: 12px; display: table; width: 100%;">
+                    <div style="display: table-cell; vertical-align: middle;">
+                      <span style="display: inline-block; background-color: #e0f2fe; color: #0284c7; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase;">${s.type || '-'}</span>
+                    </div>
+                    <div style="display: table-cell; vertical-align: middle; text-align: right; font-family: monospace; color: #64748b; font-weight: 600; font-size: 13px;">
+                      ${s.control_number || '-'}
+                    </div>
+                  </div>
+                  
+                  <h4 style="margin: 0 0 6px 0; color: #0f172a; font-size: 16px; font-weight: 600; line-height: 1.4;">${s.event || '-'}</h4>
+                  <div style="color: #334155; font-size: 14px; margin-bottom: 12px; font-weight: 500;">${s.organization_name || '-'}</div>
+                  
+                  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size: 13px; color: #475569;">
+                    <tr>
+                      <td style="padding: 4px 0; width: 70px; vertical-align: top; color: #64748b; font-weight: 600;">When</td>
+                      <td style="padding: 4px 0; vertical-align: top; color: #1e293b;">${s.event_date || '-'} <span style="color: #64748b; font-size: 12px;">${s.event_time || ''}</span></td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 4px 0; vertical-align: top; color: #64748b; font-weight: 600;">Venue</td>
+                      <td style="padding: 4px 0; vertical-align: top; color: #1e293b;">${s.venue || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 4px 0; vertical-align: top; color: #64748b; font-weight: 600;">Request</td>
+                      <td style="padding: 4px 0; vertical-align: top; color: #1e293b;">${s.request || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 4px 0; vertical-align: top; color: #64748b; font-weight: 600;">Contact</td>
+                      <td style="padding: 4px 0; vertical-align: top; color: #1e293b;">${s.contact_person || '-'} <span style="color: #64748b; font-size: 12px;">${s.contact_number ? `(${s.contact_number})` : ''}</span></td>
+                    </tr>
+                    ${s.additional_note ? `
+                    <tr>
+                      <td style="padding: 4px 0; vertical-align: top; color: #64748b; font-weight: 600;">Note</td>
+                      <td style="padding: 4px 0; vertical-align: top; font-style: italic; color: #64748b;">${s.additional_note}</td>
+                    </tr>
+                    ` : ''}
+                  </table>
+                </div>
+              `).join('')}
+            </div>
           </div>
         `;
       };

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   fetchSolicitations,
   deleteSolicitation,
@@ -103,6 +104,9 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
   const [viewingSolicitation, setViewingSolicitation] = useState<Solicitation | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deletingSolicitation, setDeletingSolicitation] = useState<Solicitation | null>(null)
+  
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [initialViewId, setInitialViewId] = useState<string | null>(() => searchParams.get('id'))
 
   const loadData = async (showLoading = true) => {
     try {
@@ -258,6 +262,34 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery, filterType, filterStatus, eventDateFrom, eventDateTo, receivedDateFrom, receivedDateTo, createdDateFrom, createdDateTo, sortBy])
+
+  // Handle URL id
+  useEffect(() => {
+    if (initialViewId && solicitations.length > 0) {
+      const sToView = solicitations.find(s => s.id === initialViewId)
+      if (sToView) {
+        setViewingSolicitation(sToView)
+        
+        // Find if we need to switch page
+        const index = filtered.findIndex(s => s.id === initialViewId)
+        if (index !== -1) {
+           setCurrentPage(Math.floor(index / PAGE_SIZE) + 1)
+        }
+        
+        // Scroll to element after render
+        setTimeout(() => {
+           const row = document.getElementById(`row-${initialViewId}`)
+           if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 100)
+
+        // Clean up URL
+        const newParams = new URLSearchParams(searchParams)
+        newParams.delete('id')
+        setSearchParams(newParams, { replace: true })
+        setInitialViewId(null)
+      }
+    }
+  }, [solicitations, initialViewId, filtered, searchParams, setSearchParams])
 
   const handleAdd = () => {
     setEditingSolicitation(null)
@@ -619,6 +651,7 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
                   {paginated.map((s) => (
                     <TableRow
                       key={s.id}
+                      id={`row-${s.id}`}
                       className="group cursor-pointer data-[state=selected]:bg-primary/10 hover:data-[state=selected]:bg-primary/15"
                       onClick={() => toggleView(s)}
                       data-state={viewingSolicitation?.id === s.id ? 'selected' : undefined}

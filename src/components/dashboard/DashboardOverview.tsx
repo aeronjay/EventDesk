@@ -280,7 +280,11 @@ export default function DashboardOverview() {
                 ) : (
                   <div className="divide-y divide-border">
                     {todaysEvents.map((s) => (
-                      <div key={s.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4 hover:bg-muted/40 transition-colors">
+                      <div 
+                        key={s.id} 
+                        className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4 hover:bg-muted/40 transition-colors cursor-pointer"
+                        onClick={() => navigate(`/solicits?id=${s.id}`)}
+                      >
                         <div className="space-y-1 w-full">
                           <div className="flex items-start justify-between gap-2">
                             <h4 className="text-sm font-semibold text-foreground">
@@ -340,7 +344,11 @@ export default function DashboardOverview() {
                 ) : (
                   <div className="divide-y divide-border">
                     {recentActive.map((s) => (
-                      <div key={s.id} className="p-4 sm:p-5 flex flex-col gap-3 hover:bg-muted/40 transition-colors">
+                      <div 
+                        key={s.id} 
+                        className="p-4 sm:p-5 flex flex-col gap-3 hover:bg-muted/40 transition-colors cursor-pointer"
+                        onClick={() => navigate(`/solicits?id=${s.id}`)}
+                      >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-3">
                             <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -407,7 +415,11 @@ export default function DashboardOverview() {
                 ) : (
                   <div className="divide-y divide-border">
                     {upcomingEvents.map((s) => (
-                      <div key={s.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4 hover:bg-muted/40 transition-colors">
+                      <div 
+                        key={s.id} 
+                        className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4 hover:bg-muted/40 transition-colors cursor-pointer"
+                        onClick={() => navigate(`/solicits?id=${s.id}`)}
+                      >
                         <div className="space-y-1 w-full">
                           <div className="flex items-start justify-between gap-2">
                             <h4 className="text-sm font-semibold text-foreground">

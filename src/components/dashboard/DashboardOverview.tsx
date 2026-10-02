@@ -18,6 +18,18 @@ import {
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 
+const formatEventTime = (time?: string | null) => {
+  if (!time) return null;
+  const match = time.match(/(\d{1,2}):(\d{2})/);
+  if (!match) return time;
+  let hours = parseInt(match[1], 10);
+  const mins = match[2];
+  const ampmMatch = time.match(/(AM|PM)/i);
+  let ampm = ampmMatch ? ampmMatch[1].toUpperCase() : (hours >= 12 ? 'PM' : 'AM');
+  hours = hours % 12 || 12;
+  return `${hours}:${mins} ${ampm}`;
+};
+
 export default function DashboardOverview() {
   const [solicitations, setSolicitations] = useState<Solicitation[]>([])
   const [loading, setLoading] = useState(true)
@@ -291,7 +303,7 @@ export default function DashboardOverview() {
                               {s.event || 'Unnamed Event'}
                             </h4>
                             <Badge variant="outline" className="shadow-sm whitespace-nowrap shrink-0">
-                              {s.event_time || 'No Time'}
+                              {formatEventTime(s.event_time) || 'No Time'}
                             </Badge>
                           </div>
                           
@@ -430,7 +442,7 @@ export default function DashboardOverview() {
                                 {s.event_date ? new Date(s.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
                               </span>
                               <span className="text-xs text-muted-foreground mt-0.5">
-                                {s.event_time || 'No Time'}
+                                {formatEventTime(s.event_time) || 'No Time'}
                               </span>
                             </div>
                           </div>

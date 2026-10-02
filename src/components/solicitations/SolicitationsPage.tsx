@@ -71,6 +71,27 @@ const formatEventTime = (time?: string | null) => {
   return `${hours}:${mins} ${ampm}`;
 };
 
+const isEventPassed = (dateStr?: string | null, timeStr?: string | null) => {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  if (timeStr) {
+    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if (timeMatch) {
+      let hours = parseInt(timeMatch[1], 10);
+      const mins = parseInt(timeMatch[2], 10);
+      const ampm = timeMatch[3]?.toUpperCase();
+      if (ampm === 'PM' && hours < 12) hours += 12;
+      if (ampm === 'AM' && hours === 12) hours = 0;
+      d.setHours(hours, mins, 0, 0);
+    } else {
+      d.setHours(23, 59, 59, 999);
+    }
+  } else {
+    d.setHours(23, 59, 59, 999);
+  }
+  return d.getTime() < Date.now();
+};
+
 const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline' | 'success'> = {
   Pending: 'outline',
   Ongoing: 'default',
@@ -700,14 +721,21 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
                         {s.event || '—'}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                        {[
-                          s.event_date && new Date(s.event_date).toLocaleDateString('en-PH', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                          }),
-                          formatEventTime(s.event_time)
-                        ].filter(Boolean).join(' at ') || '—'}
+                        <div className="flex items-center gap-2">
+                          <span>
+                            {[
+                              s.event_date && new Date(s.event_date).toLocaleDateString('en-PH', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              }),
+                              formatEventTime(s.event_time)
+                            ].filter(Boolean).join(' at ') || '—'}
+                          </span>
+                          {isEventPassed(s.event_date, s.event_time) && (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-5 leading-none flex items-center">Passed</Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         <DropdownMenu>

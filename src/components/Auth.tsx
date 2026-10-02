@@ -31,7 +31,7 @@ export default function Auth() {
             <span className="text-2xl font-bold text-primary-foreground">Q</span>
           </div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Sign in to QSolicit
+            Sign in to QSolicitations
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             Enter your credentials to access your account
@@ -102,7 +102,7 @@ export default function Auth() {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          QSolicit &copy; {new Date().getFullYear()}
+          QSolicitations &copy; {new Date().getFullYear()}
         </p>
       </div>
     </div>

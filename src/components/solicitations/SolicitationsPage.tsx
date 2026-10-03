@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
-  fetchSolicitations,
+  fetchPaginatedSolicitations,
+  fetchSolicitation,
   deleteSolicitation,
   updateSolicitation,
   type Solicitation,
@@ -57,7 +58,7 @@ import { DeleteDialog } from './DeleteDialog.tsx'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 
-const PAGE_SIZE = 100
+const PAGE_SIZE = 25
 
 const formatEventTime = (time?: string | null) => {
   if (!time) return null;
@@ -102,6 +103,7 @@ const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' |
 export default function SolicitationsPage({ showHistory = false }: { showHistory?: boolean }) {
   const { isSuperAdmin } = useAuth()
   const [solicitations, setSolicitations] = useState<Solicitation[]>([])
+  const [totalCount, setTotalCount] = useState(0)
   const [fieldConfigs, setFieldConfigs] = useState<FieldConfig[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -119,6 +121,13 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
   const [currentPage, setCurrentPage] = useState(1)
   const [filterOpen, setFilterOpen] = useState(false)
 
+  // Debounce search
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
   // Sheet states
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editingSolicitation, setEditingSolicitation] = useState<Solicitation | null>(null)
@@ -129,19 +138,35 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
   const [searchParams, setSearchParams] = useSearchParams()
   const [initialViewId, setInitialViewId] = useState<string | null>(() => searchParams.get('id'))
 
-  const loadData = async (showLoading = true) => {
+  // ── Server-side paginated data loading ──
+  const loadData = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true)
-      const [solicits, configs] = await Promise.all([
-        fetchSolicitations(),
+      const [result, configs] = await Promise.all([
+        fetchPaginatedSolicitations({
+          page: currentPage,
+          pageSize: PAGE_SIZE,
+          showHistory,
+          search: debouncedSearch,
+          filterType,
+          filterStatus,
+          sortBy,
+          eventDateFrom: eventDateFrom || undefined,
+          eventDateTo: eventDateTo || undefined,
+          receivedDateFrom: receivedDateFrom || undefined,
+          receivedDateTo: receivedDateTo || undefined,
+          createdDateFrom: createdDateFrom || undefined,
+          createdDateTo: createdDateTo || undefined,
+        }),
         fetchFieldConfigs(),
       ])
-      setSolicitations(solicits)
+      setSolicitations(result.data)
+      setTotalCount(result.totalCount)
       setFieldConfigs(configs)
       
       setViewingSolicitation(prev => {
         if (!prev) return null
-        const updated = solicits.find(s => s.id === prev.id)
+        const updated = result.data.find(s => s.id === prev.id)
         return updated || prev
       })
     } catch (err) {
@@ -150,13 +175,44 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
     } finally {
       if (showLoading) setLoading(false)
     }
-  }
+  }, [currentPage, showHistory, debouncedSearch, filterType, filterStatus, sortBy, eventDateFrom, eventDateTo, receivedDateFrom, receivedDateTo, createdDateFrom, createdDateTo])
 
+  // Reload data when any filter/page changes
   useEffect(() => {
     loadData()
-  }, [])
+  }, [loadData])
 
+  // Reset page when filters change (not when page changes)
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearch, filterType, filterStatus, sortBy, eventDateFrom, eventDateTo, receivedDateFrom, receivedDateTo, createdDateFrom, createdDateTo])
 
+  // Handle URL id — fetch the specific record if needed
+  useEffect(() => {
+    if (initialViewId && !loading) {
+      const found = solicitations.find(s => s.id === initialViewId)
+      if (found) {
+        setViewingSolicitation(found)
+        setTimeout(() => {
+          const row = document.getElementById(`row-${initialViewId}`)
+          if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 100)
+      } else {
+        // Record not on current page — fetch it directly
+        fetchSolicitation(initialViewId).then(s => {
+          setViewingSolicitation(s)
+        }).catch(() => {
+          toast.error('Could not find the requested solicitation')
+        })
+      }
+
+      // Clean up URL
+      const newParams = new URLSearchParams(searchParams)
+      newParams.delete('id')
+      setSearchParams(newParams, { replace: true })
+      setInitialViewId(null)
+    }
+  }, [initialViewId, solicitations, loading, searchParams, setSearchParams])
 
   const typeOptions = useMemo(() => {
     const config = fieldConfigs.find((c) => c.field_name === 'type')
@@ -175,142 +231,8 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
     })
   }, [allStatusOptions, showHistory])
 
-  // Filter + search + sort
-  const filtered = useMemo(() => {
-    let result = solicitations
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      result = result.filter(
-        (s) =>
-          s.organization_name?.toLowerCase().includes(q) ||
-          s.control_number?.toLowerCase().includes(q) ||
-          s.event?.toLowerCase().includes(q) ||
-          s.contact_person?.toLowerCase().includes(q) ||
-          s.venue?.toLowerCase().includes(q)
-      )
-    }
-
-    const getSortTime = (s: Solicitation, sortType: string) => {
-       if (sortType.startsWith('event')) {
-          if (!s.event_date) return null
-          const d = new Date(s.event_date)
-          if (s.event_time) {
-            const timeMatch = s.event_time.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i)
-            if (timeMatch) {
-               let hours = parseInt(timeMatch[1], 10)
-               const mins = parseInt(timeMatch[2], 10)
-               const ampm = timeMatch[3]?.toUpperCase()
-               if (ampm === 'PM' && hours < 12) hours += 12
-               if (ampm === 'AM' && hours === 12) hours = 0
-               d.setHours(hours, mins, 0, 0)
-            }
-          }
-          return d.getTime()
-       } else if (sortType.startsWith('received')) {
-          return s.date_received ? new Date(s.date_received).getTime() : null
-       } else if (sortType.startsWith('created')) {
-          return s.created_at ? new Date(s.created_at).getTime() : null
-       }
-       return null
-    }
-
-    let itemsWithTime = result.map(s => ({ item: s, time: getSortTime(s, sortBy) }))
-
-    if (showHistory) {
-      itemsWithTime = itemsWithTime.filter(x => ['Done', 'Discontinued'].includes(x.item.status || ''))
-    } else {
-      itemsWithTime = itemsWithTime.filter(x => !['Done', 'Discontinued'].includes(x.item.status || ''))
-    }
-
-    if (filterType !== 'all') {
-      itemsWithTime = itemsWithTime.filter((x) => x.item.type === filterType)
-    }
-    if (filterStatus !== 'all') {
-      itemsWithTime = itemsWithTime.filter((x) => x.item.status === filterStatus)
-    }
-
-    const applyDateFilter = (from: string, to: string, dateGetter: (s: Solicitation) => number | null) => {
-        if (from) {
-          const fromTime = new Date(from).getTime()
-          itemsWithTime = itemsWithTime.filter(x => {
-            const t = dateGetter(x.item)
-            return t !== null && t >= fromTime
-          })
-        }
-        if (to) {
-          const toDate = new Date(to)
-          toDate.setHours(23, 59, 59, 999)
-          const toTime = toDate.getTime()
-          itemsWithTime = itemsWithTime.filter(x => {
-            const t = dateGetter(x.item)
-            return t !== null && t <= toTime
-          })
-        }
-    }
-
-    const hasEventFilter = eventDateFrom || eventDateTo
-    const hasReceivedFilter = receivedDateFrom || receivedDateTo
-    const hasCreatedFilter = createdDateFrom || createdDateTo
-
-    if (hasEventFilter) {
-       applyDateFilter(eventDateFrom, eventDateTo, (s) => getSortTime(s, 'event'))
-    } else if (hasReceivedFilter) {
-       applyDateFilter(receivedDateFrom, receivedDateTo, (s) => getSortTime(s, 'received'))
-    } else if (hasCreatedFilter) {
-       applyDateFilter(createdDateFrom, createdDateTo, (s) => getSortTime(s, 'created'))
-    }
-
-    itemsWithTime.sort((a, b) => {
-        if (a.time === null && b.time === null) return 0
-        if (a.time === null) return 1
-        if (b.time === null) return -1
-        
-        return sortBy.endsWith('_asc') ? a.time - b.time : b.time - a.time
-    })
-
-    return itemsWithTime.map(x => x.item)
-  }, [solicitations, searchQuery, filterType, filterStatus, eventDateFrom, eventDateTo, receivedDateFrom, receivedDateTo, createdDateFrom, createdDateTo, sortBy])
-
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const paginated = filtered.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  )
-
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchQuery, filterType, filterStatus, eventDateFrom, eventDateTo, receivedDateFrom, receivedDateTo, createdDateFrom, createdDateTo, sortBy])
-
-  // Handle URL id
-  useEffect(() => {
-    if (initialViewId && solicitations.length > 0) {
-      const sToView = solicitations.find(s => s.id === initialViewId)
-      if (sToView) {
-        setViewingSolicitation(sToView)
-        
-        // Find if we need to switch page
-        const index = filtered.findIndex(s => s.id === initialViewId)
-        if (index !== -1) {
-           setCurrentPage(Math.floor(index / PAGE_SIZE) + 1)
-        }
-        
-        // Scroll to element after render
-        setTimeout(() => {
-           const row = document.getElementById(`row-${initialViewId}`)
-           if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }, 100)
-
-        // Clean up URL
-        const newParams = new URLSearchParams(searchParams)
-        newParams.delete('id')
-        setSearchParams(newParams, { replace: true })
-        setInitialViewId(null)
-      }
-    }
-  }, [solicitations, initialViewId, filtered, searchParams, setSearchParams])
+  // Pagination computed values
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
 
   const handleAdd = () => {
     setEditingSolicitation(null)
@@ -344,7 +266,6 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
     try {
       await deleteSolicitation(deletingSolicitation.id)
       
-      setSolicitations(prev => prev.filter(s => s.id !== deletingSolicitation.id))
       if (viewingSolicitation?.id === deletingSolicitation.id) {
         setViewingSolicitation(null)
       }
@@ -352,6 +273,9 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
       toast.success('Solicitation deleted successfully')
       setDeleteOpen(false)
       setDeletingSolicitation(null)
+      
+      // Reload current page from server
+      loadData(false)
     } catch {
       toast.error('Failed to delete solicitation')
     }
@@ -362,12 +286,14 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
     setEditingSolicitation(null)
     
     if (isEdit) {
+      // Update in local state for immediate feedback
       setSolicitations(prev => prev.map(s => s.id === savedRecord.id ? savedRecord : s))
       if (viewingSolicitation?.id === savedRecord.id) {
         setViewingSolicitation(savedRecord)
       }
     } else {
-      setSolicitations(prev => [savedRecord, ...prev])
+      // New record — reload from server to get correct ordering/pagination
+      loadData(false)
     }
   }
 
@@ -403,13 +329,6 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
             label: 'Undo',
             onClick: async () => {
               try {
-                // Optimistically revert
-                setSolicitations((prev) => 
-                  prev.map((item) => (item.id === s.id ? { ...item, status: previousStatus } : item))
-                )
-                if (viewingSolicitation?.id === s.id) {
-                  setViewingSolicitation({ ...viewingSolicitation, status: previousStatus })
-                }
                 const reverted = await updateSolicitation(s.id, { status: previousStatus })
                 setSolicitations((prev) => 
                   prev.map((item) => (item.id === s.id ? reverted : item))
@@ -418,6 +337,8 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
                   setViewingSolicitation(reverted)
                 }
                 toast.success('Status reverted')
+                // Reload to reflect the change
+                loadData(false)
               } catch {
                 toast.error('Failed to revert status')
               }
@@ -425,6 +346,8 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
           },
           duration: 5000,
         })
+        // Reload to remove the item from view
+        setTimeout(() => loadData(false), 500)
       } else {
         toast.success('Status updated')
       }
@@ -622,7 +545,7 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
               </div>
             ))}
           </div>
-        ) : paginated.length === 0 ? (
+        ) : solicitations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted mb-4">
               <FileText size={24} className="text-muted-foreground" />
@@ -669,7 +592,7 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginated.map((s) => (
+                  {solicitations.map((s) => (
                     <TableRow
                       key={s.id}
                       id={`row-${s.id}`}
@@ -840,8 +763,8 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
             <div className="flex-none flex items-center justify-between border-t border-border px-4 py-3 bg-card">
               <p className="text-sm text-muted-foreground">
                 Showing {(currentPage - 1) * PAGE_SIZE + 1}–
-                {Math.min(currentPage * PAGE_SIZE, filtered.length)} of{' '}
-                {filtered.length} record{filtered.length !== 1 ? 's' : ''}
+                {Math.min(currentPage * PAGE_SIZE, totalCount)} of{' '}
+                {totalCount} record{totalCount !== 1 ? 's' : ''}
               </p>
               <div className="flex items-center gap-1">
                 <Button

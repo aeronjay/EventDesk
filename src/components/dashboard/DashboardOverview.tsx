@@ -1,6 +1,13 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { fetchSolicitations, type Solicitation } from '@/lib/solicitations'
+import {
+  fetchDashboardCounts,
+  fetchDashboardEvents,
+  fetchRecentActive,
+  fetchSolicitations,
+  type Solicitation,
+  type DashboardCounts,
+} from '@/lib/solicitations'
 import { getExcelDownloadSetting } from '@/lib/fieldConfigs'
 import { Button } from '@/components/ui/button'
 import {
@@ -31,7 +38,10 @@ const formatEventTime = (time?: string | null) => {
 };
 
 export default function DashboardOverview() {
-  const [solicitations, setSolicitations] = useState<Solicitation[]>([])
+  const [metrics, setMetrics] = useState<DashboardCounts>({ total: 0, active: 0, completed: 0, discontinued: 0 })
+  const [todaysEvents, setTodaysEvents] = useState<Solicitation[]>([])
+  const [upcomingEvents, setUpcomingEvents] = useState<Solicitation[]>([])
+  const [recentActive, setRecentActive] = useState<Solicitation[]>([])
   const [loading, setLoading] = useState(true)
   const [excelEnabled, setExcelEnabled] = useState(true)
   const navigate = useNavigate()
@@ -40,11 +50,46 @@ export default function DashboardOverview() {
     async function load() {
       try {
         setLoading(true)
-        const [data, excelSetting] = await Promise.all([
-          fetchSolicitations(),
-          getExcelDownloadSetting()
+
+        // Compute date range: today → 6 days from now
+        const today = new Date()
+        const todayStr = today.toISOString().split('T')[0] // YYYY-MM-DD
+
+        const sixDaysLater = new Date(today)
+        sixDaysLater.setDate(today.getDate() + 6)
+        const sixDaysStr = sixDaysLater.toISOString().split('T')[0]
+
+        const [counts, events, recent, excelSetting] = await Promise.all([
+          fetchDashboardCounts(),
+          fetchDashboardEvents(todayStr, sixDaysStr),
+          fetchRecentActive(5),
+          getExcelDownloadSetting(),
         ])
-        setSolicitations(data)
+
+        setMetrics(counts)
+
+        // Split events into today vs upcoming
+        const todayStart = new Date(todayStr)
+        todayStart.setHours(0, 0, 0, 0)
+        const todayEnd = new Date(todayStr)
+        todayEnd.setHours(23, 59, 59, 999)
+
+        const todays: Solicitation[] = []
+        const upcoming: Solicitation[] = []
+
+        events.forEach(s => {
+          if (!s.event_date) return
+          const d = new Date(s.event_date)
+          if (d >= todayStart && d <= todayEnd) {
+            todays.push(s)
+          } else if (d > todayEnd) {
+            upcoming.push(s)
+          }
+        })
+
+        setTodaysEvents(todays)
+        setUpcomingEvents(upcoming.slice(0, 5))
+        setRecentActive(recent)
         setExcelEnabled(excelSetting)
       } catch (err) {
         console.error(err)
@@ -56,67 +101,12 @@ export default function DashboardOverview() {
     load()
   }, [])
 
-  const metrics = useMemo(() => {
-    let total = solicitations.length
-    let active = 0
-    let completed = 0
-    let discontinued = 0
-
-    solicitations.forEach((s) => {
-      if (s.status === 'Done') {
-        completed++
-      } else if (s.status === 'Discontinued') {
-        discontinued++
-      } else {
-        active++
-      }
-    })
-
-    return { total, active, completed, discontinued }
-  }, [solicitations])
-
-  const recentActive = useMemo(() => {
-    return solicitations
-      .filter((s) => s.status !== 'Done' && s.status !== 'Discontinued')
-      .slice(0, 5)
-  }, [solicitations])
-
-  const { todaysEvents, upcomingEvents } = useMemo(() => {
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
-    
-    const todayEnd = new Date()
-    todayEnd.setHours(23, 59, 59, 999)
-
-    const isActive = (s: Solicitation) => {
-      if (!s.status) return true;
-      const st = s.status.toLowerCase();
-      return st !== 'done' && st !== 'discontinued';
-    }
-
-    const todays = solicitations.filter(s => {
-      if (!s.event_date || !isActive(s)) return false
-      const d = new Date(s.event_date)
-      return d >= todayStart && d <= todayEnd
-    })
-
-    const threeDaysFromNow = new Date(todayEnd)
-    threeDaysFromNow.setDate(todayEnd.getDate() + 3)
-
-    const upcoming = solicitations
-      .filter(s => {
-        if (!s.event_date || !isActive(s)) return false
-        const d = new Date(s.event_date)
-        return d > todayEnd && d <= threeDaysFromNow
-      })
-      .sort((a, b) => new Date(a.event_date!).getTime() - new Date(b.event_date!).getTime())
-      .slice(0, 5)
-
-    return { todaysEvents: todays, upcomingEvents: upcoming }
-  }, [solicitations])
-
-  const exportToCSV = () => {
+  const exportToCSV = async () => {
     try {
+      // CSV export still needs all data — fetch on demand only when user clicks
+      toast.info('Preparing export…')
+      const solicitations = await fetchSolicitations()
+
       if (solicitations.length === 0) {
         toast.error('No data to export')
         return

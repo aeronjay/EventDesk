@@ -10,8 +10,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Pencil, Trash2, X, FileText, Image as ImageIcon, File, Download } from 'lucide-react'
+import { Pencil, Trash2, X, FileText, Image as ImageIcon, File, Download, Send, Loader2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { sendToTelegram } from '@/lib/telegram'
+import { toast } from 'sonner'
+import { useState } from 'react'
 
 const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline' | 'success'> = {
   Pending: 'outline',
@@ -38,7 +41,25 @@ export function SolicitationDetailPanel({
   onStatusChange,
 }: SolicitationDetailPanelProps) {
   const { isSuperAdmin } = useAuth()
+  const [sendingTelegram, setSendingTelegram] = useState(false)
+
   if (!solicitation) return null
+
+  const handleSendToTelegram = async () => {
+    setSendingTelegram(true)
+    try {
+      const result = await sendToTelegram(solicitation)
+      if (result.success) {
+        toast.success('Sent to Telegram successfully!')
+      } else {
+        toast.error(result.error || 'Failed to send to Telegram')
+      }
+    } catch (error) {
+      toast.error('Failed to send to Telegram')
+    } finally {
+      setSendingTelegram(false)
+    }
+  }
 
   const statusOptions = fieldConfigs.find((c) => c.field_name === 'status')?.options ?? []
 
@@ -304,18 +325,34 @@ export function SolicitationDetailPanel({
 
       <Separator />
 
-      <div className="flex items-center justify-start px-6 py-4 bg-muted/10">
-        {isSuperAdmin && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 text-destructive hover:text-destructive"
-            onClick={() => onDelete(solicitation)}
-          >
-            <Trash2 size={14} />
-            Delete
-          </Button>
-        )}
+      <div className="flex items-center justify-between px-6 py-4 bg-muted/10">
+        <div className="flex items-center gap-2">
+          {isSuperAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 text-destructive hover:text-destructive"
+              onClick={() => onDelete(solicitation)}
+            >
+              <Trash2 size={14} />
+              Delete
+            </Button>
+          )}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={handleSendToTelegram}
+          disabled={sendingTelegram}
+        >
+          {sendingTelegram ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <Send size={14} />
+          )}
+          {sendingTelegram ? 'Sending...' : 'Send to Telegram'}
+        </Button>
       </div>
     </div>
   )

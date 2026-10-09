@@ -109,7 +109,6 @@ serve(async (req) => {
 <b>Type:</b>  ${type}
 <b>Control No:</b>  ${controlNo}
 <b>Barangay:</b>  ${barangay}
-<b>Event:</b>  ${eventText}
 
 🏢 <b>Name of Organization/Solicitor</b>
   ${org}

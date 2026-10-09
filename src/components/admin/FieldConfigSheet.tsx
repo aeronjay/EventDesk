@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Save, Loader2, Plus, X } from 'lucide-react'
+import { Save, Loader2, Plus, X, ArrowUp, ArrowDown } from 'lucide-react'
 
 interface FieldConfigSheetProps {
   open: boolean
@@ -96,6 +96,22 @@ export function FieldConfigSheet({
 
   const handleRemoveMapping = (index: number) => {
     setColorMappings((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleMoveMapping = (index: number, direction: 'up' | 'down') => {
+    setColorMappings((prev) => {
+      const result = [...prev]
+      if (direction === 'up' && index > 0) {
+        const temp = result[index - 1]
+        result[index - 1] = result[index]
+        result[index] = temp
+      } else if (direction === 'down' && index < result.length - 1) {
+        const temp = result[index + 1]
+        result[index + 1] = result[index]
+        result[index] = temp
+      }
+      return result
+    })
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -305,13 +321,31 @@ export function FieldConfigSheet({
                           />
                           <span className="text-sm font-medium">{cm.label}</span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveMapping(idx)}
-                          className="rounded-full p-1 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                        >
-                          <X size={14} />
-                        </button>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleMoveMapping(idx, 'up')}
+                            disabled={idx === 0}
+                            className="rounded p-1 hover:bg-muted-foreground/10 text-muted-foreground transition-colors disabled:opacity-30"
+                          >
+                            <ArrowUp size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMoveMapping(idx, 'down')}
+                            disabled={idx === colorMappings.length - 1}
+                            className="rounded p-1 hover:bg-muted-foreground/10 text-muted-foreground transition-colors disabled:opacity-30"
+                          >
+                            <ArrowDown size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMapping(idx)}
+                            className="rounded p-1 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors ml-1"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

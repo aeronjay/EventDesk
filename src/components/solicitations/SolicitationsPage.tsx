@@ -610,16 +610,16 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
                           <span>{s.control_number || '—'}</span>
                           {s.control_number_color && (() => {
                             const cnConfig = fieldConfigs.find(c => c.field_name === 'control_number')
-                            const mapping = cnConfig?.color_mappings?.find(m => m.color === s.control_number_color)
+                            const mapping = cnConfig?.color_mappings?.find(m => m.label === s.control_number_color)
                             
                             return (
                               <Badge 
-                                style={{ backgroundColor: s.control_number_color, color: '#fff' }} 
+                                style={{ backgroundColor: mapping?.color || '#ccc', color: '#fff' }} 
                                 variant="outline" 
                                 className="border-0 text-xs px-1.5 py-0"
-                                title={mapping?.label || 'Color'}
+                                title={mapping?.label || s.control_number_color}
                               >
-                                {mapping?.label || '—'}
+                                {mapping?.label || s.control_number_color}
                               </Badge>
                             )
                           })()}

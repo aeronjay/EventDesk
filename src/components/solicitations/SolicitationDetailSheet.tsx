@@ -115,15 +115,15 @@ export function SolicitationDetailSheet({
                       </span>
                     )}
                     {config.field_name === 'control_number' && solicitation.control_number_color && (() => {
-                      const mapping = config.color_mappings?.find(m => m.color === solicitation.control_number_color)
+                      const mapping = config.color_mappings?.find(m => m.label === solicitation.control_number_color)
                       return (
                         <Badge 
-                          style={{ backgroundColor: solicitation.control_number_color, color: '#fff' }} 
+                          style={{ backgroundColor: mapping?.color || '#ccc', color: '#fff' }} 
                           variant="outline" 
                           className="border-0 text-xs px-1.5 py-0"
-                          title={mapping?.label || 'Color'}
+                          title={mapping?.label || solicitation.control_number_color}
                         >
-                          {mapping?.label || '—'}
+                          {mapping?.label || solicitation.control_number_color}
                         </Badge>
                       )
                     })()}

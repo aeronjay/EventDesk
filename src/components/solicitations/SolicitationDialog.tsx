@@ -314,7 +314,7 @@ export function SolicitationDialog({
                   <SelectValue placeholder="Group/Color">
                     {formData.control_number_color && formData.control_number_color !== 'none' ? (
                       (() => {
-                        const cm = config.color_mappings?.find(c => c.color === formData.control_number_color)
+                        const cm = config.color_mappings?.find(c => c.label === formData.control_number_color)
                         if (cm) {
                           return (
                             <div className="flex items-center gap-2">
@@ -345,7 +345,7 @@ export function SolicitationDialog({
                 <SelectContent>
                   <SelectItem value="none">No Color</SelectItem>
                   {config.color_mappings.map((cm, idx) => (
-                    <SelectItem key={idx} value={cm.color}>
+                    <SelectItem key={idx} value={cm.label}>
                       <div className="flex items-center gap-2">
                         <div
                           className="w-3 h-3 rounded-full border border-border"

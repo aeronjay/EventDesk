@@ -101,9 +101,8 @@ export default function DashboardOverview() {
     load()
   }, [])
 
-  const exportToCSV = async () => {
+  const exportToExcelData = async () => {
     try {
-      // CSV export still needs all data — fetch on demand only when user clicks
       toast.info('Preparing export…')
       const solicitations = await fetchSolicitations()
 
@@ -112,48 +111,13 @@ export default function DashboardOverview() {
         return
       }
 
-      const headers = [
-        'Control Number',
-        'Organization',
-        'Type',
-        'Event',
-        'Date Received',
-        'Status',
-        'Contact Person',
-        'Venue'
-      ]
-
-      const rows = solicitations.map(s => [
-        `"${s.control_number || ''}"`,
-        `"${s.organization_name || ''}"`,
-        `"${s.type || ''}"`,
-        `"${s.event || ''}"`,
-        `"${s.date_received ? new Date(s.date_received).toLocaleDateString('en-US') : ''}"`,
-        `"${s.status || ''}"`,
-        `"${s.contact_person || ''}"`,
-        `"${s.venue || ''}"`
-      ])
-
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(r => r.join(','))
-      ].join('\n')
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-      const link = document.createElement('a')
-      const url = URL.createObjectURL(blob)
+      const { exportToExcel } = await import('@/lib/exportToExcel')
+      await exportToExcel(solicitations)
       
-      link.setAttribute('href', url)
-      link.setAttribute('download', `solicitations_export_${new Date().toISOString().split('T')[0]}.csv`)
-      link.style.visibility = 'hidden'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      
-      toast.success('Exported to CSV successfully')
-    } catch (err) {
-      console.error(err)
-      toast.error('Failed to export CSV')
+      toast.success('Exported to Excel successfully')
+    } catch (err: any) {
+      console.error('Export Error:', err)
+      toast.error(`Failed to export Excel: ${err.message || 'Unknown error'}`)
     }
   }
 
@@ -176,9 +140,9 @@ export default function DashboardOverview() {
         <div className="flex shrink-0 items-center justify-end">
           <div className="flex items-center gap-3">
             {excelEnabled && (
-              <Button variant="outline" onClick={exportToCSV} className="gap-2 bg-background shadow-sm hover:bg-secondary/80">
+              <Button variant="outline" onClick={exportToExcelData} className="gap-2 bg-background shadow-sm hover:bg-secondary/80">
                 <Download size={16} />
-                Export CSV
+                Export Excel
               </Button>
             )}
             <Button onClick={() => navigate('/solicits')} className="gap-2 shadow-md">

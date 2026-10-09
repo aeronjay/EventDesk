@@ -30,13 +30,31 @@ export type SolicitationInsert = Omit<Solicitation, 'id' | 'created_at' | 'updat
 
 // ── Legacy: fetch ALL solicitations (only used by CSV export now) ──
 export async function fetchSolicitations() {
-  const { data, error } = await supabase
-    .from('solicitations')
-    .select('*')
-    .order('created_at', { ascending: false })
+  let allData: Solicitation[] = []
+  let from = 0
+  const limit = 1000
 
-  if (error) throw error
-  return data as Solicitation[]
+  while (true) {
+    const { data, error } = await supabase
+      .from('solicitations')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(from, from + limit - 1)
+
+    if (error) throw error
+
+    if (data && data.length > 0) {
+      allData = [...allData, ...(data as Solicitation[])]
+    }
+
+    if (!data || data.length < limit) {
+      break
+    }
+
+    from += limit
+  }
+
+  return allData
 }
 
 // ── Dashboard: counts only (no row data transferred) ──

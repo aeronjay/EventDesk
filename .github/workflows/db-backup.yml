@@ -1,0 +1,75 @@
+name: Database Backup to R2
+
+on:
+  schedule:
+    # Runs at 00:00 UTC every day
+    - cron: '0 0 * * *'
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Generate timestamp
+        id: timestamp
+        run: echo "date=$(date +'%Y-%m-%d_%H-%M-%S')" >> $GITHUB_ENV
+
+      - name: Dump Database & Compress
+        env:
+          # Your Supabase Database Connection URL
+          DB_URL: ${{ secrets.DB_URL }}
+        run: |
+          # The ubuntu-latest runner already has postgresql-client installed
+          pg_dump "$DB_URL" --no-owner --clean | gzip > backup_${{ env.date }}.sql.gz
+
+      - name: Install and Configure AWS CLI (for R2)
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          aws configure set aws_access_key_id $R2_ACCESS_KEY_ID
+          aws configure set aws_secret_access_key $R2_SECRET_ACCESS_KEY
+          aws configure set default.region auto
+
+      - name: Upload to Cloudflare R2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: |
+          # Upload the compressed SQL dump to the backups/ folder
+          aws s3 cp backup_${{ env.date }}.sql.gz s3://$R2_BUCKET_NAME/backups/ \
+            --endpoint-url https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com
+
+      - name: Delete Backups Older Than 7 Days
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: |
+          # List all files in backups/ folder
+          # For each file, check if it is older than 7 days and delete if true
+          
+          threshold=$(date -d "7 days ago" +%s)
+          
+          # Use AWS CLI to list files and output JSON
+          aws s3api list-objects-v2 --bucket $R2_BUCKET_NAME --prefix "backups/" \
+            --endpoint-url https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com \
+            --query "Contents[?Key != 'backups/'].{Key: Key, LastModified: LastModified}" \
+            --output json > files.json
+            
+          if [ -s files.json ] && [ "$(cat files.json)" != "null" ]; then
+            # Parse JSON and delete old files
+            jq -c '.[]' files.json | while read i; do
+              file_key=$(echo $i | jq -r .Key)
+              file_date=$(echo $i | jq -r .LastModified)
+              
+              file_timestamp=$(date -d "$file_date" +%s)
+              
+              if [ $file_timestamp -lt $threshold ]; then
+                echo "Deleting old backup: $file_key"
+                aws s3 rm s3://$R2_BUCKET_NAME/$file_key \
+                  --endpoint-url https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com
+              fi
+            done
+          fi

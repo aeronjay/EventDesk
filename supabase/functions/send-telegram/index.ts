@@ -52,23 +52,39 @@ serve(async (req) => {
 
     // Build attachment section
     let attachmentSection = ''
-    let hasAttachments = false
+    let fileAttachments: any[] = []
+    let imageAttachments: any[] = []
+
     if (solicitation.attachments) {
       let atts = solicitation.attachments
       if (typeof atts === 'string') {
         try { atts = JSON.parse(atts) } catch { atts = [] }
       }
       if (Array.isArray(atts) && atts.length > 0) {
-        hasAttachments = true
-        const fileLinks = atts.map((att: any) => {
-          const name = escapeHtml(att.name || 'File')
-          const url = att.url || '#'
-          return `  📄 <a href="${url}">${name}</a>`
-        }).join('\n')
-        attachmentSection = `\n📎 <b>Attachments</b>\n${fileLinks}`
+        const imageExtensions = /\.(jpg|jpeg|png|gif|webp)$/i
+        for (const att of atts) {
+          if (att.name && imageExtensions.test(att.name)) {
+            imageAttachments.push(att)
+          } else {
+            fileAttachments.push(att)
+          }
+        }
       }
     }
-    if (!hasAttachments) {
+
+    if (fileAttachments.length > 0) {
+      const fileLinks = fileAttachments.map((att: any) => {
+        const name = escapeHtml(att.name || 'File')
+        const url = att.url || '#'
+        return `  📄 <a href="${url}">${name}</a>`
+      }).join('\n')
+      attachmentSection = `\n📎 <b>Attachments</b>\n${fileLinks}`
+      if (imageAttachments.length > 0) {
+        attachmentSection += `\n  <i>(+${imageAttachments.length} image${imageAttachments.length > 1 ? 's' : ''} below)</i>`
+      }
+    } else if (imageAttachments.length > 0) {
+      attachmentSection = `\n📎 <b>Attachments</b>\n  <i>${imageAttachments.length} image${imageAttachments.length > 1 ? 's' : ''} attached below</i>`
+    } else {
       attachmentSection = `\n📎 <b>Attachments</b>\n  <i>No attachments</i>`
     }
 
@@ -129,6 +145,41 @@ ${attachmentSection}
     if (!telegramData.ok) {
       console.error('Telegram API error:', telegramData)
       throw new Error(`Telegram API error: ${telegramData.description || 'Unknown error'}`)
+    }
+
+    // Send images if any exist
+    if (imageAttachments.length > 0) {
+      try {
+        if (imageAttachments.length === 1) {
+          const photoUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`
+          await fetch(photoUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chat_id,
+              photo: imageAttachments[0].url,
+            }),
+          })
+        } else {
+          // Send as media group
+          const mediaUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMediaGroup`
+          const media = imageAttachments.map(att => ({
+            type: 'photo',
+            media: att.url
+          }))
+          await fetch(mediaUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chat_id,
+              media: media,
+            }),
+          })
+        }
+      } catch (imgError) {
+        console.error('Error sending images to Telegram:', imgError)
+        // Continue and return success for the main message
+      }
     }
 
     return new Response(JSON.stringify({ success: true, message_id: telegramData.result?.message_id }), {

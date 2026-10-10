@@ -106,8 +106,6 @@ serve(async (req) => {
     // Build the Telegram message using HTML parse mode (more mobile-friendly)
     const message = `📋 <b>SOLICITATION DETAILS</b>
 
-<b>Type:</b>  ${type}
-<b>Control No:</b>  ${controlNo}
 <b>Barangay:</b>  ${barangay}
 
 🏢 <b>Name of Organization/Solicitor</b>
@@ -130,7 +128,7 @@ serve(async (req) => {
 
 👤 <b>Contact</b>
   ${contact}
-  📞 ${contactNum}
+  
 ${attachmentSection}`
 
     const isCaptionValid = message.length <= 1024;

@@ -277,10 +277,15 @@ export async function updateSolicitation(id: string, updates: Partial<Solicitati
 }
 
 export async function deleteSolicitation(id: string) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('solicitations')
     .delete()
     .eq('id', id)
+    .select('id')
 
   if (error) throw error
+  // RLS silently filters out rows the user can't delete, so 0 rows means it was blocked
+  if (!data || data.length === 0) {
+    throw new Error('Solicitation was not deleted (not found or not permitted)')
+  }
 }

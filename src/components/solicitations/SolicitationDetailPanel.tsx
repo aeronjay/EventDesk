@@ -11,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Pencil, Trash2, X, FileText, Image as ImageIcon, File, Download, Send, Loader2 } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
 import { sendToTelegram } from '@/lib/telegram'
 import { toast } from 'sonner'
 import { useState } from 'react'
@@ -40,7 +39,6 @@ export function SolicitationDetailPanel({
   onClose,
   onStatusChange,
 }: SolicitationDetailPanelProps) {
-  const { isSuperAdmin } = useAuth()
   const [sendingTelegram, setSendingTelegram] = useState(false)
 
   if (!solicitation) return null
@@ -327,17 +325,15 @@ export function SolicitationDetailPanel({
 
       <div className="flex items-center justify-between px-6 py-4 bg-muted/10">
         <div className="flex items-center gap-2">
-          {isSuperAdmin && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 text-destructive hover:text-destructive"
-              onClick={() => onDelete(solicitation)}
-            >
-              <Trash2 size={14} />
-              Delete
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-destructive hover:text-destructive"
+            onClick={() => onDelete(solicitation)}
+          >
+            <Trash2 size={14} />
+            Delete
+          </Button>
         </div>
         <Button
           variant="outline"

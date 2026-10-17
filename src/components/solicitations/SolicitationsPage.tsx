@@ -520,7 +520,7 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
         {!showHistory && (
           <Button onClick={handleAdd} className="gap-2 shrink-0 sm:ml-auto">
             <Plus size={16} />
-            Add Solicitation
+            Add {TERMS.One}
           </Button>
         )}
       </div>
@@ -560,7 +560,7 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
             {!hasActiveFilters && !showHistory && (
               <Button onClick={handleAdd} size="sm" className="gap-2">
                 <Plus size={14} />
-                Add Solicitation
+                Add {TERMS.One}
               </Button>
             )}
           </div>

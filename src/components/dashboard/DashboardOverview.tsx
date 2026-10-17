@@ -148,7 +148,7 @@ export default function DashboardOverview() {
             )}
             <Button onClick={() => navigate('/solicits')} className="gap-2 shadow-md">
               <Plus size={16} />
-              New Solicitation
+              New {TERMS.One}
             </Button>
           </div>
         </div>

@@ -138,12 +138,12 @@ export default function SettingsPage() {
                   Chat ID
                 </Label>
                 <span className="text-sm text-muted-foreground">
-                  The Telegram group chat ID where the bot will send messages. Typically a negative number (e.g. -5450676224).
+                  The Telegram group chat ID where the bot will send messages. Typically a negative number (e.g. -1001234567890).
                 </span>
                 <Input
                   id="telegram-chat-id"
                   type="text"
-                  placeholder="e.g. -5450676224"
+                  placeholder="e.g. -1001234567890"
                   value={telegramChatId}
                   onChange={(e) => setTelegramChatId(e.target.value)}
                   className="max-w-sm font-mono"

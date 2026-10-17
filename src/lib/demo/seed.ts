@@ -111,7 +111,86 @@ const rows: Row[] = [
   ['Sponsorship', 'Elm Grove Chess Club', 'Elm Grove', 'Open Chess Tournament', -9, -28, 'Done', 'Prize money and venue fee.', 'Elm Grove Library', 'Victor Salazar', 'Routine'],
 ]
 
-const solicitations = rows.map(
+
+// ── Generated filler so lists, pagination and filters have realistic volume ──
+// Deterministic PRNG, so every reload shows the same data.
+const mulberry32 = (seed: number) => () => {
+  seed |= 0
+  seed = (seed + 0x6d2b79f5) | 0
+  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+}
+
+const PLACES = ['Riverside', 'Greenfield', 'Harborview', 'Sunrise Heights', 'Eastside', 'Lakeshore', 'Hillcrest', 'Maple Street', 'Northgate', 'Cedar Valley', 'Pinewood', 'Stonebridge', 'Westend', 'Brookside', 'Oakdale', 'Bayview', 'Silver Oaks', 'Redwood', 'Meadowlands', 'Crestview', 'Valley Ridge', 'Southpoint', 'Elm Grove', 'Fairmont', 'Highland Park', 'Willow Creek', 'Sandy Shores', 'Kingsway', 'Birchwood', 'Summit View']
+const GROUPS = ['Youth Alliance', 'Senior Citizens Association', 'Parents Association', 'Farmers Cooperative', 'Women’s Circle', 'Homeowners Association', 'Basketball League', 'Cultural Society', 'Health Volunteers', 'Fisherfolk Association', 'Scouts', 'Livelihood Group', 'Learning Center', 'Church Choir', 'Tricycle Operators Association', 'Fun Run Committee', 'Dance Troupe', 'Chess Club', 'Neighborhood Watch', 'Environmental Council']
+const FIRST = ['Maria', 'Jose', 'Ana', 'Paolo', 'Rico', 'Liza', 'Elena', 'Teresa', 'Benjie', 'Nestor', 'Corazon', 'Marco', 'Ruben', 'Katrina', 'Helen', 'Arman', 'Joanna', 'Gilbert', 'Victor', 'Irene', 'Dante', 'Carla', 'Miguel', 'Rosario', 'Felix', 'Diana', 'Oscar', 'Patricia', 'Raul', 'Sheila']
+const LAST = ['Santos', 'Ramirez', 'Dela Cruz', 'Reyes', 'Mendoza', 'Navarro', 'Bautista', 'Lim', 'Aquino', 'Villanueva', 'Diaz', 'Tan', 'Castillo', 'Flores', 'Ocampo', 'Soriano', 'Pascual', 'Ramos', 'Salazar', 'Padilla', 'Gomez', 'Cruz', 'Garcia', 'Torres', 'Rivera', 'Morales', 'Aguilar', 'Domingo', 'Mercado', 'Valdez']
+
+const EVENTS: Record<string, { events: string[]; requests: string[]; venues: string[] }> = {
+  Invitation: {
+    events: ['Annual General Assembly', 'Community Fiesta', 'Leadership Training Seminar', 'Anniversary Celebration', 'Induction of Officers', 'Town Hall Dialogue', 'Thanksgiving Program', 'Graduation Ceremony'],
+    requests: ['Invitation to attend as guest of honor.', 'Request for a guest speaker to deliver opening remarks.', 'Invitation to witness the program and give a short message.'],
+    venues: ['Barangay Hall', 'Covered Court', 'Community Center', 'Parish Hall', 'Public Plaza'],
+  },
+  'Financial Assistance': {
+    events: ['Relief Distribution', 'Livelihood Training Program', 'Scholarship Awarding', 'Community Feeding Program', 'Medical Assistance Drive', 'Disaster Preparedness Workshop'],
+    requests: ['Financial support for program expenses.', 'Assistance for affected families and food packs.', 'Request for funds to cover venue and materials.'],
+    venues: ['Barangay Gym', 'Elementary School', 'Multi-purpose Hall', 'Community Center'],
+  },
+  Donation: {
+    events: ['Back-to-School Drive', 'Christmas Gift-Giving', 'Coastal Clean-up Drive', 'Tree Planting Activity', 'Sports Equipment Turnover', 'Book Donation Drive'],
+    requests: ['Donation of supplies for beneficiaries.', 'Request for equipment and giveaways.', 'Donation of instruments and uniforms.'],
+    venues: ['Learning Center', 'Public Library', 'Shoreline', 'Municipal Park', 'Elementary School'],
+  },
+  'Medical Mission': {
+    events: ['Free Medical and Dental Mission', 'Vaccination Drive', 'Blood Donation Drive', 'Health and Wellness Fair', 'Free Eye Check-up'],
+    requests: ['Logistics support and volunteers for registration.', 'Tents, tables and chairs for the mission.', 'Venue sponsorship and snacks for attendees.'],
+    venues: ['Health Center', 'Elementary School', 'Barangay Hall', 'Covered Court'],
+  },
+  Sponsorship: {
+    events: ['Inter-Zone Basketball Tournament', 'Fun Run', 'Heritage Festival', 'Open Chess Tournament', 'Regional Dance Competition', 'Youth Sports Fest', 'Battle of the Bands'],
+    requests: ['Sponsorship for trophies and prizes.', 'Sponsorship for sound system and stage rental.', 'Support for race kits, medals and transport.'],
+    venues: ['Municipal Arena', 'City Park', 'Public Plaza', 'Covered Court', 'Sports Complex'],
+  },
+}
+
+function generateRows(count: number): Row[] {
+  const rand = mulberry32(2026)
+  const pick = <T,>(arr: T[]) => arr[Math.floor(rand() * arr.length)]
+  const out: Row[] = []
+  for (let i = 0; i < count; i++) {
+    const type = pick(TYPES)
+    const t = EVENTS[type]
+    const place = pick(PLACES)
+    const history = rand() < 0.4
+    const status = history ? (rand() < 0.85 ? 'Done' : 'Discontinued') : pick(['Pending', 'For Review', 'Approved', 'Pending'])
+    // History events are in the past; active ones mostly upcoming, a few already overdue
+    const eventOffset = history
+      ? -Math.floor(2 + rand() * 330)
+      : rand() < 0.1 ? -Math.floor(1 + rand() * 6) : Math.floor(rand() * 75)
+    // A request can't have been received in the future
+    const receivedOffset = Math.min(eventOffset - Math.floor(5 + rand() * 25), -Math.floor(rand() * 8))
+    out.push([
+      type,
+      `${place} ${pick(GROUPS)}`,
+      place,
+      `${pick(t.events)}`,
+      eventOffset,
+      receivedOffset,
+      status,
+      pick(t.requests),
+      `${place} ${pick(t.venues)}`,
+      `${pick(FIRST)} ${pick(LAST)}`,
+      rand() < 0.85 ? pick(COLORS).label : null,
+    ])
+  }
+  return out
+}
+
+const allRows: Row[] = [...rows, ...generateRows(320 - rows.length)]
+
+const solicitations = allRows.map(
   ([type, org, area, event, eventOffset, receivedOffset, status, request, venue, person, color], i) => ({
     id: `00000000-0000-4000-8000-${String(i + 100).padStart(12, '0')}`,
     type,

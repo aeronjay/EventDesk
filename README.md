@@ -35,6 +35,28 @@ A tracker for incoming event requests. Organizations send in invitations, donati
 | ![Field config](docs/screenshots/admin-field-config.png) | ![Sign in](docs/screenshots/login.png) |
 | **Editing a field** (type, options, colors) | **Sign in** |
 
+## Sending events to Telegram
+
+Open any event and press **Send to Telegram** (it's in the GIF above). The full event is posted to your team's Telegram group, so people who aren't in the app still see it.
+
+![An event posted to a Telegram group by the EventDesk bot](docs/screenshots/TelegramSample.jpg)
+
+*An event as it arrives in the group: the attached image on top, then the event details.*
+
+What gets posted:
+
+- **Event details.** Priority, organization, event name, request, recommendation, date and time, venue and contact person, each with its own icon so the message is easy to scan.
+- **Attached images.** One image is sent as a photo with the details as its caption. Several images are sent as an album, with the details on the first one. If the details are too long for a caption (Telegram's limit is 1,024 characters), they're sent as a separate message right after the images.
+- **Other files.** PDFs, documents and anything that isn't an image are listed as clickable links under **Attachments**.
+
+How it works:
+
+1. The group's chat ID is entered once under **Settings → Telegram Integration**. It's stored in the `app_settings` table.
+2. Pressing the button calls the `send-telegram` edge function with the event and the chat ID.
+3. The function formats the message and posts it through the Telegram Bot API, using the bot token kept in the `TELEGRAM_BOT_TOKEN` secret. The token never reaches the browser.
+
+To set it up, create a bot with [@BotFather](https://t.me/BotFather), add the bot to your group, and set the secret with `npx supabase secrets set TELEGRAM_BOT_TOKEN=<your-token>`. The demo doesn't contact Telegram; it only shows the confirmation message.
+
 ## Tech stack
 
 | Layer | Technology |

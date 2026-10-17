@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { TERMS } from '@/lib/appName'
 import {
   fetchFieldConfigs,
   updateFieldConfig,
@@ -120,7 +121,7 @@ export default function AdminPage() {
         <div className="rounded-xl border border-border bg-card p-4 mb-8 flex items-center justify-between shadow-sm">
           <div>
             <h3 className="text-sm font-semibold text-foreground">Enable CSV/Excel Export</h3>
-            <p className="text-sm text-muted-foreground mt-0.5">Allow users to export solicitations to a CSV file from the dashboard.</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Allow users to export {TERMS.many} to a CSV file from the dashboard.</p>
           </div>
           <Switch 
             checked={excelEnabled} 

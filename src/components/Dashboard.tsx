@@ -1,5 +1,6 @@
 import { useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { APP_NAME, APP_INITIAL, TERMS } from '@/lib/appName'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,7 +24,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-  { id: 'solicits', label: 'Solicits', icon: FileText, path: '/solicits' },
+  { id: 'solicits', label: TERMS.Short, icon: FileText, path: '/solicits' },
   { id: 'history', label: 'History', icon: Clock, path: '/history' },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/settings' },
   { id: 'admin', label: 'Admin', icon: Shield, path: '/admin', superAdminOnly: true },
@@ -69,10 +70,10 @@ export default function Dashboard() {
         {/* Brand */}
         <div className="flex h-14 items-center gap-3 border-b border-border px-5">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary">
-            <span className="text-sm font-bold text-primary-foreground">Q</span>
+            <span className="text-sm font-bold text-primary-foreground">{APP_INITIAL}</span>
           </div>
           <span className="text-base font-semibold tracking-tight text-foreground">
-            QSolicit
+            {APP_NAME}
           </span>
           {/* Close button — mobile only */}
           <button
@@ -148,7 +149,7 @@ export default function Dashboard() {
             <Menu size={20} />
           </button>
           <h1 className="text-base font-semibold text-foreground">
-            {activeItem?.label ?? 'QSolicit'}
+            {activeItem?.label ?? APP_NAME}
           </h1>
         </header>
 

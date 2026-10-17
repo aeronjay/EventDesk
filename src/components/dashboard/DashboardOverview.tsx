@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { TERMS } from '@/lib/appName'
 import { useNavigate } from 'react-router-dom'
 import {
   fetchDashboardCounts,
@@ -157,7 +158,7 @@ export default function DashboardOverview() {
           {/* Total */}
           <div className="rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:shadow-md">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-muted-foreground">Total Solicits</p>
+              <p className="text-sm font-medium text-muted-foreground">Total {TERMS.Short}</p>
               <div className="rounded-full bg-primary/10 p-2 text-primary">
                 <FileText size={16} />
               </div>
@@ -295,7 +296,7 @@ export default function DashboardOverview() {
               <div className="p-5 border-b border-border flex items-center justify-between bg-card/50 shrink-0">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Recent Active Requests</h3>
-                  <p className="text-sm text-muted-foreground mt-0.5">The latest unresolved solicitations.</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">The latest unresolved {TERMS.many}.</p>
                 </div>
                 <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground hover:text-foreground" onClick={() => navigate('/solicits')}>
                   View All
@@ -305,7 +306,7 @@ export default function DashboardOverview() {
               <div className="p-0 overflow-y-auto flex-1 min-h-0">
                 {recentActive.length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground text-sm flex flex-col items-center justify-center h-full">
-                    No active solicitations found.
+                    No active {TERMS.many} found.
                   </div>
                 ) : (
                   <div className="divide-y divide-border">

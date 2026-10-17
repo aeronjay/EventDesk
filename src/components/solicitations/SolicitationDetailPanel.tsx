@@ -1,4 +1,5 @@
 import type { Solicitation } from '@/lib/solicitations'
+import { TERMS } from '@/lib/appName'
 import type { FieldConfig } from '@/lib/fieldConfigs'
 
 import { Badge } from '@/components/ui/badge'
@@ -97,7 +98,7 @@ export function SolicitationDetailPanel({
       <div className="flex items-start justify-between px-6 py-4 border-b border-border bg-muted/20">
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-3">
-            <span>{solicitation.organization_name || 'Solicitation Details'}</span>
+            <span>{solicitation.organization_name || `${TERMS.One} Details`}</span>
             <DropdownMenu>
               <DropdownMenuTrigger className="focus:outline-none">
                 {solicitation.status && (

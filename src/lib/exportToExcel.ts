@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
 import type { Solicitation } from './solicitations'
 import { fetchFieldConfigs } from './fieldConfigs'
+import { APP_NAME, TERMS } from './appName'
 
 const formatEventTime = (time?: string | null) => {
   if (!time) return null;
@@ -21,7 +22,7 @@ export async function exportToExcel(solicitations: Solicitation[]) {
   const colorMappings = cnConfig?.color_mappings || [];
 
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'QSolicit';
+  workbook.creator = APP_NAME;
   workbook.created = new Date();
 
   const activeSolicitations = solicitations.filter(s => s.status !== 'Done' && s.status !== 'Discontinued');
@@ -163,6 +164,6 @@ export async function exportToExcel(solicitations: Solicitation[]) {
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const filename = `solicitations_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+  const filename = `${TERMS.many}_export_${new Date().toISOString().split('T')[0]}.xlsx`;
   saveAs(blob, filename);
 }

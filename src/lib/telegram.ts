@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient'
+import { supabase, isDemoMode } from './supabaseClient'
 import type { Solicitation } from './solicitations'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
@@ -33,6 +33,12 @@ export async function setAppSetting(key: string, value: string): Promise<void> {
 // ── Telegram ──
 
 export async function sendToTelegram(solicitation: Solicitation): Promise<{ success: boolean; error?: string }> {
+  // Demo mode: pretend it worked, nothing is sent to Telegram
+  if (isDemoMode) {
+    await new Promise((resolve) => setTimeout(resolve, 800))
+    return { success: true }
+  }
+
   // Fetch the chat ID from app settings
   const chatId = await getAppSetting('telegram_chat_id')
 

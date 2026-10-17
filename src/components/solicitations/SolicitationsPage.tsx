@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { TERMS } from '@/lib/appName'
 import { useSearchParams } from 'react-router-dom'
 import {
   fetchPaginatedSolicitations,
@@ -169,7 +170,7 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
       })
     } catch (err) {
       console.error(err)
-      toast.error('Failed to load solicitations')
+      toast.error(`Failed to load ${TERMS.many}`)
     } finally {
       if (showLoading) setLoading(false)
     }
@@ -200,7 +201,7 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
         fetchSolicitation(initialViewId).then(s => {
           setViewingSolicitation(s)
         }).catch(() => {
-          toast.error('Could not find the requested solicitation')
+          toast.error(`Could not find the requested ${TERMS.one}`)
         })
       }
 
@@ -268,14 +269,14 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
         setViewingSolicitation(null)
       }
 
-      toast.success('Solicitation deleted successfully')
+      toast.success(`${TERMS.One} deleted successfully`)
       setDeleteOpen(false)
       setDeletingSolicitation(null)
       
       // Reload current page from server
       loadData(false)
     } catch {
-      toast.error('Failed to delete solicitation')
+      toast.error(`Failed to delete ${TERMS.one}`)
     }
   }
 
@@ -322,7 +323,7 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
       const isMovedToActive = showHistory && !['Done', 'Discontinued'].includes(newStatus)
 
       if (isMovedToHistory || isMovedToActive) {
-        toast.success(`Moved to ${isMovedToHistory ? 'History' : 'Active Solicits'}`, {
+        toast.success(`Moved to ${isMovedToHistory ? 'History' : `Active ${TERMS.Short}`}`, {
           action: {
             label: 'Undo',
             onClick: async () => {
@@ -549,12 +550,12 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
               <FileText size={24} className="text-muted-foreground" />
             </div>
             <h3 className="text-base font-medium text-foreground mb-1">
-              {hasActiveFilters ? 'No results found' : 'No solicitations yet'}
+              {hasActiveFilters ? 'No results found' : `No ${TERMS.many} yet`}
             </h3>
             <p className="text-sm text-muted-foreground mb-4 text-center max-w-xs">
               {hasActiveFilters
                 ? 'Try adjusting your search or filters'
-                : 'Get started by adding your first solicitation record'}
+                : `Get started by adding your first ${TERMS.one} record`}
             </p>
             {!hasActiveFilters && !showHistory && (
               <Button onClick={handleAdd} size="sm" className="gap-2">

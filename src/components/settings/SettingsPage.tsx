@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { TERMS } from '@/lib/appName'
 import { useAuth } from '@/contexts/AuthContext'
 import { fetchUserSettings, updateUserSettings } from '@/lib/settings'
 import { getAppSetting, setAppSetting } from '@/lib/telegram'
@@ -91,16 +92,16 @@ export default function SettingsPage() {
         <div className="p-6">
           <h3 className="text-lg font-medium">Email Notifications</h3>
           <p className="text-sm text-muted-foreground mb-6">
-            Configure how you want to be notified about upcoming solicitations.
+            Configure how you want to be notified about upcoming {TERMS.many}.
           </p>
           
           <div className="flex items-center justify-between space-x-2">
             <div className="flex flex-col space-y-1">
               <Label htmlFor="notifications-toggle" className="text-base">
-                Solicitation Reminders
+                {TERMS.One} Reminders
               </Label>
               <span className="text-sm text-muted-foreground">
-                Receive an email reminder 5 days before, 1 day before, and on the exact date of your upcoming solicitations.
+                Receive an email reminder 5 days before, 1 day before, and on the exact date of your upcoming {TERMS.many}.
               </span>
             </div>
             <Switch
@@ -127,8 +128,8 @@ export default function SettingsPage() {
               <h3 className="text-lg font-medium">Telegram Integration</h3>
             </div>
             <p className="text-sm text-muted-foreground mb-6">
-              Configure the Telegram group chat where solicitation details will be sent. 
-              Use the "Send to Telegram" button in any solicitation's detail view.
+              Configure the Telegram group chat where {TERMS.one} details will be sent. 
+              Use the "Send to Telegram" button in any {TERMS.one}'s detail view.
             </p>
 
             <div className="space-y-3">

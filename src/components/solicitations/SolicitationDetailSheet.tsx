@@ -1,4 +1,5 @@
 import type { Solicitation } from '@/lib/solicitations'
+import { TERMS } from '@/lib/appName'
 import type { FieldConfig } from '@/lib/fieldConfigs'
 import {
   Sheet,
@@ -75,7 +76,7 @@ export function SolicitationDetailSheet({
       <SheetContent className="w-full sm:max-w-lg flex flex-col p-0">
         <SheetHeader className="px-6 pt-6 pb-4">
           <SheetTitle className="flex items-center gap-3">
-            <span>Solicitation Details</span>
+            <span>{TERMS.One} Details</span>
             {solicitation.status && (
               <Badge variant={statusVariantMap[solicitation.status] ?? 'outline'}>
                 {solicitation.status}

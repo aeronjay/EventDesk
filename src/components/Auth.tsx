@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { APP_LONG_NAME, APP_INITIAL } from '@/lib/appName'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -28,10 +29,10 @@ export default function Auth() {
         {/* Brand Header */}
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary">
-            <span className="text-2xl font-bold text-primary-foreground">Q</span>
+            <span className="text-2xl font-bold text-primary-foreground">{APP_INITIAL}</span>
           </div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Sign in to QSolicitations
+            Sign in to {APP_LONG_NAME}
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             Enter your credentials to access your account
@@ -102,7 +103,7 @@ export default function Auth() {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          QSolicitations &copy; {new Date().getFullYear()}
+          {APP_LONG_NAME} &copy; {new Date().getFullYear()}
         </p>
       </div>
     </div>

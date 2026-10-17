@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { TERMS } from '@/lib/appName'
 import type { FieldConfig, ColorMapping } from '@/lib/fieldConfigs'
 import {
   Sheet,
@@ -146,7 +147,7 @@ export function FieldConfigSheet({
         <SheetHeader className="px-6 pt-6 pb-4">
           <SheetTitle>Edit Field: {fieldConfig.label}</SheetTitle>
           <SheetDescription>
-            Configure how the <strong>{fieldConfig.label}</strong> field behaves in solicitation forms.
+            Configure how the <strong>{fieldConfig.label}</strong> field behaves in {TERMS.one} forms.
           </SheetDescription>
         </SheetHeader>
 
@@ -178,7 +179,7 @@ export function FieldConfigSheet({
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Determines the input type shown on the solicitation form
+                Determines the input type shown on the {TERMS.one} form
               </p>
             </div>
 
@@ -241,7 +242,7 @@ export function FieldConfigSheet({
                 />
               )}
               <p className="text-xs text-muted-foreground">
-                Optional default value for new solicitations
+                Optional default value for new {TERMS.many}
               </p>
             </div>
 

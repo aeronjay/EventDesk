@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase, isDemoMode } from '@/lib/supabaseClient'
 import { UploadCloud, X, File, Loader2, FileText, Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -90,21 +90,25 @@ export function FileUpload({ attachments, onChange, disabled }: FileUploadProps)
       if (error) throw new Error(error.message)
       if (!data?.urls || data.urls.length === 0) throw new Error('Failed to get upload URL')
 
-      const { uploadUrl, url, key } = data.urls[0]
+      const { uploadUrl, key } = data.urls[0]
+      // Demo mode: skip R2 and point at a local blob so previews still work
+      const url: string = isDemoMode ? URL.createObjectURL(upload.file) : data.urls[0].url
 
       // 2. Upload to R2 directly
       setUploadingFiles(prev => prev.map(f => f.id === upload.id ? { ...f, progress: 20 } : f))
 
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: upload.file,
-        headers: {
-          'Content-Type': upload.file.type
-        }
-      })
+      if (!isDemoMode) {
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          body: upload.file,
+          headers: {
+            'Content-Type': upload.file.type
+          }
+        })
 
-      if (!uploadResponse.ok) {
-        throw new Error(`Upload failed with status ${uploadResponse.status}`)
+        if (!uploadResponse.ok) {
+          throw new Error(`Upload failed with status ${uploadResponse.status}`)
+        }
       }
 
       setUploadingFiles(prev => prev.map(f => f.id === upload.id ? { ...f, progress: 100 } : f))

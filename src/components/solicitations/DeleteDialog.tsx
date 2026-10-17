@@ -1,4 +1,5 @@
 import type { Solicitation } from '@/lib/solicitations'
+import { TERMS } from '@/lib/appName'
 import {
   Dialog,
   DialogContent,
@@ -58,9 +59,9 @@ export function DeleteDialog({
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
             <AlertCircle size={24} className="text-destructive" />
           </div>
-          <DialogTitle className="text-center">Delete Solicitation</DialogTitle>
+          <DialogTitle className="text-center">Delete {TERMS.One}</DialogTitle>
           <DialogDescription className="text-center">
-            Are you sure you want to delete the solicitation
+            Are you sure you want to delete the {TERMS.one}
             {solicitation.control_number && (
               <> <strong>#{solicitation.control_number}</strong></>
             )}

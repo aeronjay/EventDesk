@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { TERMS } from '@/lib/appName'
 import {
   createSolicitation,
   updateSolicitation,
@@ -180,10 +181,10 @@ export function SolicitationDialog({
       let savedRecord: Solicitation
       if (isEdit && solicitation) {
         savedRecord = await updateSolicitation(solicitation.id, record)
-        toast.success('Solicitation updated successfully')
+        toast.success(`${TERMS.One} updated successfully`)
       } else {
         savedRecord = await createSolicitation({ ...record, created_by: user?.id ?? null })
-        toast.success('Solicitation created successfully')
+        toast.success(`${TERMS.One} created successfully`)
       }
       onSaved(savedRecord, isEdit)
       
@@ -381,11 +382,11 @@ export function SolicitationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[95vw] md:max-w-6xl lg:max-w-7xl flex flex-col p-0 max-h-[90vh]">
         <DialogHeader className="px-6 pt-6 pb-4">
-          <DialogTitle>{isEdit ? 'Edit Solicitation' : 'Add Solicitation'}</DialogTitle>
+          <DialogTitle>{isEdit ? `Edit ${TERMS.One}` : `Add ${TERMS.One}`}</DialogTitle>
           <DialogDescription>
             {isEdit
-              ? `Editing record for ${solicitation?.organization_name || solicitation?.control_number || 'this solicitation'}`
-              : 'Fill out the details to create a new solicitation record'}
+              ? `Editing record for ${solicitation?.organization_name || solicitation?.control_number || `this ${TERMS.one}`}`
+              : `Fill out the details to create a new ${TERMS.one} record`}
           </DialogDescription>
         </DialogHeader>
 

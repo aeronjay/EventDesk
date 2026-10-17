@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { TERMS } from '@/lib/appName'
 import {
   createSolicitation,
   updateSolicitation,
@@ -126,10 +127,10 @@ export function SolicitationSheet({
 
       if (isEdit && solicitation) {
         await updateSolicitation(solicitation.id, record)
-        toast.success('Solicitation updated successfully')
+        toast.success(`${TERMS.One} updated successfully`)
       } else {
         await createSolicitation({ ...record, created_by: user?.id ?? null })
-        toast.success('Solicitation created successfully')
+        toast.success(`${TERMS.One} created successfully`)
       }
       onSaved()
     } catch (err) {
@@ -303,11 +304,11 @@ export function SolicitationSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-lg flex flex-col p-0">
         <SheetHeader className="px-6 pt-6 pb-4">
-          <SheetTitle>{isEdit ? 'Edit Solicitation' : 'Add Solicitation'}</SheetTitle>
+          <SheetTitle>{isEdit ? `Edit ${TERMS.One}` : `Add ${TERMS.One}`}</SheetTitle>
           <SheetDescription>
             {isEdit
-              ? `Editing record for ${solicitation?.organization_name || solicitation?.control_number || 'this solicitation'}`
-              : 'Fill out the details to create a new solicitation record'}
+              ? `Editing record for ${solicitation?.organization_name || solicitation?.control_number || `this ${TERMS.one}`}`
+              : `Fill out the details to create a new ${TERMS.one} record`}
           </SheetDescription>
         </SheetHeader>
 

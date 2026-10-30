@@ -65,3 +65,69 @@ export async function sendToTelegram(solicitation: Solicitation): Promise<{ succ
 
   return { success: true }
 }
+
+// ── Telegram send log ──
+
+export interface TelegramSend {
+  id: string
+  solicitation_id: string | null
+  sent_by: string | null
+  sent_by_email: string | null
+  chat_id: string
+  status: 'success' | 'failed'
+  error: string | null
+  message_id: number | null
+  control_number: string | null
+  organization_name: string | null
+  event: string | null
+  event_date: string | null
+  sent_at: string
+}
+
+// All send attempts for one solicitation, newest first
+export async function fetchTelegramSendsFor(solicitationId: string): Promise<TelegramSend[]> {
+  const { data, error } = await supabase
+    .from('telegram_sends')
+    .select('*')
+    .eq('solicitation_id', solicitationId)
+    .order('sent_at', { ascending: false })
+
+  if (error) throw error
+  return data as TelegramSend[]
+}
+
+export interface FetchTelegramSendsOptions {
+  page: number
+  pageSize: number
+  search?: string
+  status?: 'all' | 'success' | 'failed'
+}
+
+export async function fetchPaginatedTelegramSends(
+  opts: FetchTelegramSendsOptions
+): Promise<{ data: TelegramSend[]; totalCount: number }> {
+  const { page, pageSize, search, status } = opts
+  const from = (page - 1) * pageSize
+
+  let q = supabase
+    .from('telegram_sends')
+    .select('*', { count: 'exact' })
+
+  if (status && status !== 'all') {
+    q = q.eq('status', status)
+  }
+
+  if (search && search.trim()) {
+    const term = `%${search.trim()}%`
+    q = q.or(
+      `organization_name.ilike.${term},control_number.ilike.${term},event.ilike.${term},sent_by_email.ilike.${term}`
+    )
+  }
+
+  const { data, error, count } = await q
+    .order('sent_at', { ascending: false })
+    .range(from, from + pageSize - 1)
+
+  if (error) throw error
+  return { data: (data ?? []) as TelegramSend[], totalCount: count ?? 0 }
+}

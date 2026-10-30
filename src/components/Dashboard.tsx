@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   FileText,
   Clock,
+  Send,
   Settings,
   Shield,
   LogOut,
@@ -25,6 +26,7 @@ const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
   { id: 'solicits', label: 'Solicits', icon: FileText, path: '/solicits' },
   { id: 'history', label: 'History', icon: Clock, path: '/history' },
+  { id: 'telegram-log', label: 'Telegram Log', icon: Send, path: '/telegram-log' },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/settings' },
   { id: 'admin', label: 'Admin', icon: Shield, path: '/admin', superAdminOnly: true },
 ]

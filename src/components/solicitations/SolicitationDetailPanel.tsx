@@ -10,10 +10,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Pencil, Trash2, X, FileText, Image as ImageIcon, File, Download, Send, Loader2 } from 'lucide-react'
-import { sendToTelegram } from '@/lib/telegram'
+import { Pencil, Trash2, X, FileText, Image as ImageIcon, File, Download, Send, Loader2, CheckCircle2, XCircle } from 'lucide-react'
+import { sendToTelegram, fetchTelegramSendsFor, type TelegramSend } from '@/lib/telegram'
 import { toast } from 'sonner'
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline' | 'success'> = {
   Pending: 'outline',
@@ -40,8 +40,26 @@ export function SolicitationDetailPanel({
   onStatusChange,
 }: SolicitationDetailPanelProps) {
   const [sendingTelegram, setSendingTelegram] = useState(false)
+  const [telegramSends, setTelegramSends] = useState<TelegramSend[]>([])
+
+  const solicitationId = solicitation?.id
+  const loadTelegramSends = useCallback(async () => {
+    if (!solicitationId) return
+    try {
+      setTelegramSends(await fetchTelegramSendsFor(solicitationId))
+    } catch (error) {
+      console.error('Failed to load Telegram send history:', error)
+    }
+  }, [solicitationId])
+
+  useEffect(() => {
+    setTelegramSends([])
+    loadTelegramSends()
+  }, [loadTelegramSends])
 
   if (!solicitation) return null
+
+  const successfulSends = telegramSends.filter((s) => s.status === 'success')
 
   const handleSendToTelegram = async () => {
     setSendingTelegram(true)
@@ -56,6 +74,7 @@ export function SolicitationDetailPanel({
       toast.error('Failed to send to Telegram')
     } finally {
       setSendingTelegram(false)
+      loadTelegramSends()
     }
   }
 
@@ -121,6 +140,12 @@ export function SolicitationDetailPanel({
           <p className="text-sm text-muted-foreground mt-1">
             Control No: {solicitation.control_number || '—'}
           </p>
+          {successfulSends.length > 0 && (
+            <Badge variant="success" className="mt-2 gap-1" title={`Last sent ${new Date(successfulSends[0].sent_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}`}>
+              <Send />
+              Sent to Telegram{successfulSends.length > 1 ? ` ×${successfulSends.length}` : ''}
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => onEdit(solicitation)} className="h-8 w-8 text-muted-foreground hover:text-primary">
@@ -303,6 +328,49 @@ export function SolicitationDetailPanel({
           )
         })()}
 
+          {/* Telegram send history */}
+          <Separator />
+          <div className="pt-2">
+            <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
+              Telegram History
+            </dt>
+            {telegramSends.length === 0 ? (
+              <dd className="text-sm text-muted-foreground">Not sent to Telegram yet</dd>
+            ) : (
+              <>
+                <dd className="text-sm text-foreground mb-3">
+                  {successfulSends.length > 0
+                    ? `Sent ${successfulSends.length} time${successfulSends.length > 1 ? 's' : ''}, last on ${new Date(successfulSends[0].sent_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}`
+                    : 'Never sent successfully'}
+                </dd>
+                <dd className="space-y-2">
+                  {telegramSends.map((send) => (
+                    <div key={send.id} className="flex items-start gap-2 text-sm">
+                      {send.status === 'success' ? (
+                        <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-green-600" />
+                      ) : (
+                        <XCircle size={16} className="mt-0.5 shrink-0 text-destructive" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-foreground">
+                          {send.status === 'success' ? 'Sent' : 'Failed'}
+                          {' · '}
+                          {new Date(send.sent_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          by {send.sent_by_email || 'Unknown user'}
+                        </p>
+                        {send.error && (
+                          <p className="text-xs text-destructive break-words">{send.error}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </dd>
+              </>
+            )}
+          </div>
+
           {/* Timestamps */}
           <Separator />
           <div className="pt-2">
@@ -347,7 +415,7 @@ export function SolicitationDetailPanel({
           ) : (
             <Send size={14} />
           )}
-          {sendingTelegram ? 'Sending...' : 'Send to Telegram'}
+          {sendingTelegram ? 'Sending...' : successfulSends.length > 0 ? 'Send Again' : 'Send to Telegram'}
         </Button>
       </div>
     </div>

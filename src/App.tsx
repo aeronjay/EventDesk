@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard'
 import SolicitationsPage from './components/solicitations/SolicitationsPage'
 import AdminPage from './components/admin/AdminPage'
 import SettingsPage from './components/settings/SettingsPage'
+import TelegramLogPage from './components/telegram/TelegramLogPage'
 
 import DashboardOverview from './components/dashboard/DashboardOverview'
 
@@ -36,6 +37,7 @@ function AppRoutes() {
           path="history"
           element={<SolicitationsPage key="history" showHistory={true} />}
         />
+        <Route path="telegram-log" element={<TelegramLogPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

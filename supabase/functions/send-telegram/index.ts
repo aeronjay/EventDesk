@@ -140,7 +140,9 @@ async function deliver(solicitation: any, chat_id: string): Promise<number | nul
     ? `${e(eventDateStr)}  ·  ${e(eventTimeStr)}`
     : e(eventDateStr)
 
-  // Build the Telegram message using HTML parse mode (more mobile-friendly)
+  // Build the Telegram message using HTML parse mode (more mobile-friendly).
+  // The confirmation preview in src/components/solicitations/TelegramSendConfirmDialog.tsx
+  // mirrors this layout; update it too when changing the message.
   const message = `📋 <b>SOLICITATION DETAILS</b>
 
 <b>Barangay:</b>  ${barangay}

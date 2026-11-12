@@ -14,6 +14,7 @@ import { Pencil, Trash2, X, FileText, Image as ImageIcon, File, Download, Send, 
 import { sendToTelegram, fetchTelegramSendsFor, type TelegramSend } from '@/lib/telegram'
 import { toast } from 'sonner'
 import { useState, useEffect, useCallback } from 'react'
+import { TelegramSendConfirmDialog } from './TelegramSendConfirmDialog'
 
 const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline' | 'success'> = {
   Pending: 'outline',
@@ -40,6 +41,7 @@ export function SolicitationDetailPanel({
   onStatusChange,
 }: SolicitationDetailPanelProps) {
   const [sendingTelegram, setSendingTelegram] = useState(false)
+  const [confirmTelegramOpen, setConfirmTelegramOpen] = useState(false)
   const [telegramSends, setTelegramSends] = useState<TelegramSend[]>([])
 
   const solicitationId = solicitation?.id
@@ -67,6 +69,7 @@ export function SolicitationDetailPanel({
       const result = await sendToTelegram(solicitation)
       if (result.success) {
         toast.success('Sent to Telegram successfully!')
+        setConfirmTelegramOpen(false)
       } else {
         toast.error(result.error || 'Failed to send to Telegram')
       }
@@ -407,7 +410,7 @@ export function SolicitationDetailPanel({
           variant="outline"
           size="sm"
           className="gap-2"
-          onClick={handleSendToTelegram}
+          onClick={() => setConfirmTelegramOpen(true)}
           disabled={sendingTelegram}
         >
           {sendingTelegram ? (
@@ -418,6 +421,20 @@ export function SolicitationDetailPanel({
           {sendingTelegram ? 'Sending...' : successfulSends.length > 0 ? 'Send Again' : 'Send to Telegram'}
         </Button>
       </div>
+
+      <TelegramSendConfirmDialog
+        solicitation={solicitation}
+        colorGroupColor={
+          fieldConfigs
+            .find((c) => c.field_name === 'control_number')
+            ?.color_mappings?.find((m) => m.label === solicitation.control_number_color)?.color
+        }
+        open={confirmTelegramOpen}
+        onOpenChange={setConfirmTelegramOpen}
+        onConfirm={handleSendToTelegram}
+        sending={sendingTelegram}
+        alreadySent={successfulSends.length > 0}
+      />
     </div>
   )
 }

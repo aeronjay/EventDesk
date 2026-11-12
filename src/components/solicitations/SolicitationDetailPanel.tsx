@@ -11,10 +11,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Pencil, Trash2, X, FileText, Image as ImageIcon, File, Download, Send, Loader2, CheckCircle2, XCircle } from 'lucide-react'
-import { sendToTelegram, fetchTelegramSendsFor, type TelegramSend } from '@/lib/telegram'
+import { sendToTelegram, fetchTelegramSendsFor, isActiveSend, type TelegramSend } from '@/lib/telegram'
 import { toast } from 'sonner'
 import { useState, useEffect, useCallback } from 'react'
 import { TelegramSendConfirmDialog } from './TelegramSendConfirmDialog'
+import { TelegramDeleteConfirmDialog } from '@/components/telegram/TelegramDeleteConfirmDialog'
 
 const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline' | 'success'> = {
   Pending: 'outline',
@@ -43,6 +44,7 @@ export function SolicitationDetailPanel({
   const [sendingTelegram, setSendingTelegram] = useState(false)
   const [confirmTelegramOpen, setConfirmTelegramOpen] = useState(false)
   const [telegramSends, setTelegramSends] = useState<TelegramSend[]>([])
+  const [sendToDelete, setSendToDelete] = useState<TelegramSend | null>(null)
 
   const solicitationId = solicitation?.id
   const loadTelegramSends = useCallback(async () => {
@@ -61,7 +63,9 @@ export function SolicitationDetailPanel({
 
   if (!solicitation) return null
 
-  const successfulSends = telegramSends.filter((s) => s.status === 'success')
+  // Sends deleted from Telegram no longer count as sent
+  const successfulSends = telegramSends.filter(isActiveSend)
+  const deletedSends = telegramSends.filter((s) => s.deleted_at)
 
   const handleSendToTelegram = async () => {
     setSendingTelegram(true)
@@ -344,18 +348,22 @@ export function SolicitationDetailPanel({
                 <dd className="text-sm text-foreground mb-3">
                   {successfulSends.length > 0
                     ? `Sent ${successfulSends.length} time${successfulSends.length > 1 ? 's' : ''}, last on ${new Date(successfulSends[0].sent_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}`
-                    : 'Never sent successfully'}
+                    : deletedSends.length > 0
+                      ? 'Not on Telegram. Earlier sends were deleted.'
+                      : 'Never sent successfully'}
                 </dd>
                 <dd className="space-y-2">
                   {telegramSends.map((send) => (
                     <div key={send.id} className="flex items-start gap-2 text-sm">
-                      {send.status === 'success' ? (
+                      {send.deleted_at ? (
+                        <Trash2 size={16} className="mt-0.5 shrink-0 text-muted-foreground" />
+                      ) : send.status === 'success' ? (
                         <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-green-600" />
                       ) : (
                         <XCircle size={16} className="mt-0.5 shrink-0 text-destructive" />
                       )}
-                      <div className="min-w-0">
-                        <p className="text-foreground">
+                      <div className="min-w-0 flex-1">
+                        <p className={send.deleted_at ? 'text-muted-foreground' : 'text-foreground'}>
                           {send.status === 'success' ? 'Sent' : 'Failed'}
                           {' · '}
                           {new Date(send.sent_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}
@@ -363,10 +371,31 @@ export function SolicitationDetailPanel({
                         <p className="text-xs text-muted-foreground truncate">
                           by {send.sent_by_email || 'Unknown user'}
                         </p>
+                        {send.deleted_at && (
+                          <>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Deleted from Telegram · {new Date(send.deleted_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}
+                            </p>
+                            <p className="text-xs text-muted-foreground break-all">
+                              by {send.deleted_by_email || 'Unknown user'}
+                            </p>
+                          </>
+                        )}
                         {send.error && (
                           <p className="text-xs text-destructive break-words">{send.error}</p>
                         )}
                       </div>
+                      {isActiveSend(send) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-destructive"
+                          onClick={() => setSendToDelete(send)}
+                        >
+                          <Trash2 size={12} />
+                          Delete
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </dd>
@@ -434,6 +463,12 @@ export function SolicitationDetailPanel({
         onConfirm={handleSendToTelegram}
         sending={sendingTelegram}
         alreadySent={successfulSends.length > 0}
+      />
+
+      <TelegramDeleteConfirmDialog
+        send={sendToDelete}
+        onOpenChange={(open) => { if (!open) setSendToDelete(null) }}
+        onDeleted={loadTelegramSends}
       />
     </div>
   )

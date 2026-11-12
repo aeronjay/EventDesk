@@ -66,6 +66,29 @@ export async function sendToTelegram(solicitation: Solicitation): Promise<{ succ
   return { success: true }
 }
 
+// Deletes the messages of one send from the Telegram chat and marks the log
+// row as deleted. Telegram only lets bots delete messages under 48 hours old.
+export async function deleteTelegramSend(sendId: string): Promise<{ success: boolean; error?: string }> {
+  const { data: { session } } = await supabase.auth.getSession()
+
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/delete-telegram`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session?.access_token}`,
+    },
+    body: JSON.stringify({ send_id: sendId }),
+  })
+
+  const result = await response.json().catch(() => ({}))
+
+  if (!response.ok || result.error) {
+    return { success: false, error: result.error || 'Failed to delete from Telegram' }
+  }
+
+  return { success: true }
+}
+
 // ── Telegram send log ──
 
 export interface TelegramSend {
@@ -77,11 +100,23 @@ export interface TelegramSend {
   status: 'success' | 'failed'
   error: string | null
   message_id: number | null
+  message_ids: number[] | null
   control_number: string | null
   organization_name: string | null
   event: string | null
   event_date: string | null
   sent_at: string
+  deleted_at: string | null
+  deleted_by: string | null
+  deleted_by_email: string | null
+}
+
+// Telegram stops letting bots delete messages 48 hours after they were sent
+export const TELEGRAM_DELETE_WINDOW_MS = 48 * 60 * 60 * 1000
+
+// A successful send whose messages are still in the Telegram chat
+export function isActiveSend(send: TelegramSend): boolean {
+  return send.status === 'success' && !send.deleted_at
 }
 
 // All send attempts for one solicitation, newest first
@@ -100,7 +135,7 @@ export interface FetchTelegramSendsOptions {
   page: number
   pageSize: number
   search?: string
-  status?: 'all' | 'success' | 'failed'
+  status?: 'all' | 'success' | 'failed' | 'deleted'
 }
 
 export async function fetchPaginatedTelegramSends(
@@ -113,8 +148,12 @@ export async function fetchPaginatedTelegramSends(
     .from('telegram_sends')
     .select('*', { count: 'exact' })
 
-  if (status && status !== 'all') {
-    q = q.eq('status', status)
+  if (status === 'success') {
+    q = q.eq('status', 'success').is('deleted_at', null)
+  } else if (status === 'deleted') {
+    q = q.not('deleted_at', 'is', null)
+  } else if (status === 'failed') {
+    q = q.eq('status', 'failed')
   }
 
   if (search && search.trim()) {

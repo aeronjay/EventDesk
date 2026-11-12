@@ -33,15 +33,16 @@ serve(async (req) => {
 
     const sender = await getSender(req)
 
-    let message_id: number | null
+    let delivered: Delivered
     try {
-      message_id = await deliver(solicitation, chat_id)
+      delivered = await deliver(solicitation, chat_id)
     } catch (sendError) {
       await logSend({ solicitation, chat_id, sender, status: 'failed', error: sendError.message })
       throw sendError
     }
 
-    await logSend({ solicitation, chat_id, sender, status: 'success', message_id })
+    const { message_id, message_ids } = delivered
+    await logSend({ solicitation, chat_id, sender, status: 'success', message_id, message_ids })
 
     return new Response(JSON.stringify({ success: true, message_id }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -57,9 +58,16 @@ serve(async (req) => {
   }
 })
 
-// Formats the solicitation and posts it to Telegram. Returns the message id
-// of the text/caption message, or throws if the details were not delivered.
-async function deliver(solicitation: any, chat_id: string): Promise<number | null> {
+interface Delivered {
+  // The text/caption message
+  message_id: number | null
+  // Every message this send created (photos and text), so delete-telegram can remove them all
+  message_ids: number[]
+}
+
+// Formats the solicitation and posts it to Telegram. Throws if the details
+// were not delivered.
+async function deliver(solicitation: any, chat_id: string): Promise<Delivered> {
   // Format the event date nicely
   let eventDateStr = solicitation.event_date || '—'
   if (solicitation.event_date) {
@@ -173,6 +181,7 @@ ${attachmentSection}`
   const isCaptionValid = message.length <= 1024;
   let messageSentAsCaption = false;
   let message_id: number | null = null;
+  const message_ids: number[] = [];
 
   // Try to send images first (and include message as caption if it fits).
   // The caption only counts as sent when Telegram accepts the request;
@@ -197,6 +206,7 @@ ${attachmentSection}`
         })
         const data = await res.json()
         if (data.ok) {
+          if (data.result?.message_id != null) message_ids.push(data.result.message_id)
           if (isCaptionValid) {
             messageSentAsCaption = true
             message_id = data.result?.message_id ?? null
@@ -226,6 +236,9 @@ ${attachmentSection}`
         })
         const data = await res.json()
         if (data.ok) {
+          for (const m of data.result ?? []) {
+            if (m?.message_id != null) message_ids.push(m.message_id)
+          }
           if (isCaptionValid) {
             messageSentAsCaption = true
             message_id = data.result?.[0]?.message_id ?? null
@@ -260,9 +273,10 @@ ${attachmentSection}`
       throw new Error(`Telegram API error: ${telegramData.description || 'Unknown error'}`)
     }
     message_id = telegramData.result?.message_id ?? null
+    if (message_id != null) message_ids.push(message_id)
   }
 
-  return message_id
+  return { message_id, message_ids }
 }
 
 // Resolve the calling user from their JWT (null if it can't be determined)
@@ -284,13 +298,14 @@ async function logSend(entry: {
   sender: { id: string; email?: string } | null
   status: 'success' | 'failed'
   message_id?: number | null
+  message_ids?: number[]
   error?: string
 }) {
   if (!supabase) {
     console.error('Cannot log Telegram send: missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
     return
   }
-  const { solicitation, chat_id, sender, status, message_id, error } = entry
+  const { solicitation, chat_id, sender, status, message_id, message_ids, error } = entry
   const { error: insertError } = await supabase.from('telegram_sends').insert({
     solicitation_id: solicitation.id ?? null,
     sent_by: sender?.id ?? null,
@@ -299,6 +314,7 @@ async function logSend(entry: {
     status,
     error: error ?? null,
     message_id: message_id ?? null,
+    message_ids: message_ids?.length ? message_ids : null,
     control_number: solicitation.control_number ?? null,
     organization_name: solicitation.organization_name ?? null,
     event: solicitation.event ?? null,

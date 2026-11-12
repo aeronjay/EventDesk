@@ -55,6 +55,8 @@ How it works:
 2. Pressing the button calls the `send-telegram` edge function with the event and the chat ID.
 3. The function formats the message and posts it through the Telegram Bot API, using the bot token kept in the `TELEGRAM_BOT_TOKEN` secret. The token never reaches the browser.
 
+**Deleting a sent event.** A successful send can be deleted from the event's Telegram History or from the **Telegram Log** page. The bot removes every message that send created (the photos and the details), and the send stays in the log marked as deleted. The event then shows as not sent. Telegram only lets bots delete messages for 48 hours after they were sent; after that, delete the message by hand in Telegram.
+
 To set it up, create a bot with [@BotFather](https://t.me/BotFather), add the bot to your group, and set the secret with `npx supabase secrets set TELEGRAM_BOT_TOKEN=<your-token>`. The demo doesn't contact Telegram; it only shows the confirmation message.
 
 ## Tech stack
@@ -176,6 +178,7 @@ Functions live in `supabase/functions/` and are deployed with the Supabase CLI:
 ```bash
 npx supabase functions deploy generate-r2-upload-url
 npx supabase functions deploy send-telegram
+npx supabase functions deploy delete-telegram
 npx supabase functions deploy send-reminders
 ```
 
@@ -185,6 +188,7 @@ Set the secrets they need with `npx supabase secrets set KEY=value`:
 |---|---|
 | `generate-r2-upload-url` | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL` |
 | `send-telegram` | `TELEGRAM_BOT_TOKEN` |
+| `delete-telegram` | `TELEGRAM_BOT_TOKEN` |
 | `send-reminders` | `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD` |
 
 The Telegram chat ID is stored in the `app_settings` table and set from **Settings** in the app.

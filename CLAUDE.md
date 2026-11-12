@@ -37,7 +37,8 @@ The frontend needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env`.
 
 **Edge functions (`supabase/functions/`, Deno):**
 - `generate-r2-upload-url`: returns presigned R2 PUT URLs under `attachments/<uuid>.<ext>`. `FileUpload.tsx` uploads directly to R2 and then stores `{name, url, key}` in `solicitations.attachments` (JSONB).
-- `send-telegram`: formats a solicitation and posts it to a Telegram chat with the bot token. Attachments are sent as captioned media. Every attempt, successful or failed, is written to `telegram_sends` with the service-role key (the table's SQL is in `supabase/sql/telegram_sends.sql`; clients can only read it).
+- `send-telegram`: formats a solicitation and posts it to a Telegram chat with the bot token. Attachments are sent as captioned media. Every attempt, successful or failed, is written to `telegram_sends` with the service-role key (the table's SQL is in `supabase/sql/telegram_sends.sql`; clients can only read it). It saves the ids of every message the send created in `message_ids`.
+- `delete-telegram`: takes a `telegram_sends` id, deletes that send's messages from the chat with `deleteMessages`, and sets `deleted_at`/`deleted_by` on the row. Any signed-in user can call it. A deleted send no longer counts as sent (`isActiveSend` in `telegram.ts`). Telegram only allows bots to delete messages under 48 hours old.
 - `send-reminders`: calls the `get_reminders_to_send` RPC, filters out done/discontinued items, and emails users through Gmail SMTP (nodemailer). Dates use Manila time (UTC+8). It has `verify_jwt = false` and its own import map, both set in `supabase/config.toml`, so it can be triggered by a scheduler.
 - Shared CORS headers are in `_shared/cors.ts`.
 

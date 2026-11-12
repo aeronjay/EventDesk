@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { fetchPaginatedTelegramSends, type TelegramSend } from '@/lib/telegram'
+import { fetchPaginatedTelegramSends, isActiveSend, type TelegramSend } from '@/lib/telegram'
+import { TelegramDeleteConfirmDialog } from './TelegramDeleteConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -19,12 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Search, Send, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Send, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 const PAGE_SIZE = 25
 
-type StatusFilter = 'all' | 'success' | 'failed'
+type StatusFilter = 'all' | 'success' | 'failed' | 'deleted'
 
 const formatDate = (dateStr?: string | null) => {
   if (!dateStr) return '—'
@@ -40,6 +41,7 @@ export default function TelegramLogPage() {
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [sendToDelete, setSendToDelete] = useState<TelegramSend | null>(null)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -110,6 +112,7 @@ export default function TelegramLogPage() {
             <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="success">Sent</SelectItem>
             <SelectItem value="failed">Failed</SelectItem>
+            <SelectItem value="deleted">Deleted</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -120,7 +123,7 @@ export default function TelegramLogPage() {
           <div className="space-y-0">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="flex gap-4 border-b border-border px-4 py-4 last:border-0">
-                {[120, 80, 160, 160, 90, 140, 60].map((w, j) => (
+                {[120, 80, 160, 160, 90, 140, 60, 60].map((w, j) => (
                   <div key={j} className="h-4 rounded bg-muted/60 animate-pulse" style={{ width: w }} />
                 ))}
               </div>
@@ -153,6 +156,7 @@ export default function TelegramLogPage() {
                     <TableHead className="whitespace-nowrap">Event Date</TableHead>
                     <TableHead className="whitespace-nowrap">Sent By</TableHead>
                     <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead className="w-0" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -181,10 +185,33 @@ export default function TelegramLogPage() {
                         {send.sent_by_email || '—'}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
-                        {send.status === 'success' ? (
+                        {send.deleted_at ? (
+                          <Badge
+                            variant="secondary"
+                            title={`Deleted ${new Date(send.deleted_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })} by ${send.deleted_by_email || 'Unknown user'}`}
+                          >
+                            Sent · Deleted
+                          </Badge>
+                        ) : send.status === 'success' ? (
                           <Badge variant="success">Sent</Badge>
                         ) : (
                           <Badge variant="destructive" title={send.error || ''}>Failed</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-right">
+                        {isActiveSend(send) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSendToDelete(send)
+                            }}
+                          >
+                            <Trash2 size={12} />
+                            Delete
+                          </Button>
                         )}
                       </TableCell>
                     </TableRow>
@@ -227,6 +254,12 @@ export default function TelegramLogPage() {
           </>
         )}
       </div>
+
+      <TelegramDeleteConfirmDialog
+        send={sendToDelete}
+        onOpenChange={(open) => { if (!open) setSendToDelete(null) }}
+        onDeleted={loadData}
+      />
     </div>
   )
 }

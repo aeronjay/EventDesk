@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { fetchPaginatedTelegramSends, isActiveSend, type TelegramSend } from '@/lib/telegram'
+import { fetchPaginatedTelegramSends, isActiveSend, type TelegramLogEntry, type TelegramSend } from '@/lib/telegram'
+import { canDeleteTelegramSend } from '@/lib/permissions'
+import { useAuth } from '@/contexts/AuthContext'
 import { TelegramDeleteConfirmDialog } from './TelegramDeleteConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,7 +38,8 @@ const formatDate = (dateStr?: string | null) => {
 
 export default function TelegramLogPage() {
   const navigate = useNavigate()
-  const [sends, setSends] = useState<TelegramSend[]>([])
+  const { user, isSuperAdmin } = useAuth()
+  const [sends, setSends] = useState<TelegramLogEntry[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
@@ -199,7 +202,8 @@ export default function TelegramLogPage() {
                         )}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-right">
-                        {isActiveSend(send) && (
+                        {isActiveSend(send) &&
+                          canDeleteTelegramSend(send, send.solicitation_created_by, { userId: user?.id, isSuperAdmin }) && (
                           <Button
                             variant="ghost"
                             size="sm"

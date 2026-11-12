@@ -138,15 +138,21 @@ export interface FetchTelegramSendsOptions {
   status?: 'all' | 'success' | 'failed' | 'deleted'
 }
 
+// A log row plus the creator of its solicitation (null if it was deleted),
+// used to decide who may delete the send
+export interface TelegramLogEntry extends TelegramSend {
+  solicitation_created_by: string | null
+}
+
 export async function fetchPaginatedTelegramSends(
   opts: FetchTelegramSendsOptions
-): Promise<{ data: TelegramSend[]; totalCount: number }> {
+): Promise<{ data: TelegramLogEntry[]; totalCount: number }> {
   const { page, pageSize, search, status } = opts
   const from = (page - 1) * pageSize
 
   let q = supabase
     .from('telegram_sends')
-    .select('*', { count: 'exact' })
+    .select('*, solicitations(created_by)', { count: 'exact' })
 
   if (status === 'success') {
     q = q.eq('status', 'success').is('deleted_at', null)
@@ -168,5 +174,10 @@ export async function fetchPaginatedTelegramSends(
     .range(from, from + pageSize - 1)
 
   if (error) throw error
-  return { data: (data ?? []) as TelegramSend[], totalCount: count ?? 0 }
+  const rows = (data ?? []).map(({ solicitations, ...send }) => ({
+    ...(send as TelegramSend),
+    solicitation_created_by:
+      (solicitations as { created_by: string | null } | null)?.created_by ?? null,
+  }))
+  return { data: rows, totalCount: count ?? 0 }
 }

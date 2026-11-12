@@ -16,6 +16,9 @@ import { toast } from 'sonner'
 import { useState, useEffect, useCallback } from 'react'
 import { TelegramSendConfirmDialog } from './TelegramSendConfirmDialog'
 import { TelegramDeleteConfirmDialog } from '@/components/telegram/TelegramDeleteConfirmDialog'
+import { canDeleteSolicitation, canDeleteTelegramSend } from '@/lib/permissions'
+import { useAuth } from '@/contexts/AuthContext'
+import { fetchUserEmails } from '@/lib/users'
 
 const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline' | 'success'> = {
   Pending: 'outline',
@@ -41,6 +44,7 @@ export function SolicitationDetailPanel({
   onClose,
   onStatusChange,
 }: SolicitationDetailPanelProps) {
+  const { user, isSuperAdmin } = useAuth()
   const [sendingTelegram, setSendingTelegram] = useState(false)
   const [confirmTelegramOpen, setConfirmTelegramOpen] = useState(false)
   const [telegramSends, setTelegramSends] = useState<TelegramSend[]>([])
@@ -61,11 +65,25 @@ export function SolicitationDetailPanel({
     loadTelegramSends()
   }, [loadTelegramSends])
 
+  // Email of the user who created the solicitation
+  const createdBy = solicitation?.created_by ?? null
+  const [creatorEmail, setCreatorEmail] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    setCreatorEmail(null)
+    if (!createdBy) return
+    fetchUserEmails([createdBy])
+      .then((emails) => { if (!cancelled) setCreatorEmail(emails[createdBy] ?? null) })
+      .catch((error) => console.error('Failed to load creator email:', error))
+    return () => { cancelled = true }
+  }, [createdBy])
+
   if (!solicitation) return null
 
   // Sends deleted from Telegram no longer count as sent
   const successfulSends = telegramSends.filter(isActiveSend)
   const deletedSends = telegramSends.filter((s) => s.deleted_at)
+  const viewer = { userId: user?.id, isSuperAdmin }
 
   const handleSendToTelegram = async () => {
     setSendingTelegram(true)
@@ -385,7 +403,7 @@ export function SolicitationDetailPanel({
                           <p className="text-xs text-destructive break-words">{send.error}</p>
                         )}
                       </div>
-                      {isActiveSend(send) && (
+                      {isActiveSend(send) && canDeleteTelegramSend(send, solicitation.created_by, viewer) && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -416,6 +434,13 @@ export function SolicitationDetailPanel({
                   timeStyle: 'short',
                 })}
               </dd>
+              {(() => {
+                // Fall back to the signed-in user's own email for their records
+                const email = creatorEmail ?? (createdBy && createdBy === user?.id ? user?.email : null)
+                return email ? (
+                  <dd className="text-xs text-muted-foreground break-all">by {email}</dd>
+                ) : null
+              })()}
             </div>
           </div>
         </div>
@@ -425,15 +450,17 @@ export function SolicitationDetailPanel({
 
       <div className="flex items-center justify-between px-6 py-4 bg-muted/10">
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 text-destructive hover:text-destructive"
-            onClick={() => onDelete(solicitation)}
-          >
-            <Trash2 size={14} />
-            Delete
-          </Button>
+          {canDeleteSolicitation(solicitation, viewer) && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 text-destructive hover:text-destructive"
+              onClick={() => onDelete(solicitation)}
+            >
+              <Trash2 size={14} />
+              Delete
+            </Button>
+          )}
         </div>
         <Button
           variant="outline"

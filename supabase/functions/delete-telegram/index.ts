@@ -26,7 +26,6 @@ serve(async (req) => {
       throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.")
     }
 
-    // Any signed-in user may delete a send
     const token = req.headers.get('Authorization')?.replace('Bearer ', '')
     const { data: userData, error: userError } = token
       ? await supabase.auth.getUser(token)
@@ -43,7 +42,7 @@ serve(async (req) => {
 
     const { data: send, error: fetchError } = await supabase
       .from('telegram_sends')
-      .select('id, chat_id, status, message_id, message_ids, deleted_at')
+      .select('id, chat_id, status, message_id, message_ids, deleted_at, sent_by, solicitation_id')
       .eq('id', send_id)
       .maybeSingle()
 
@@ -51,6 +50,13 @@ serve(async (req) => {
     if (!send) throw new Error("Telegram send not found.")
     if (send.status !== 'success') throw new Error("Only successful sends can be deleted.")
     if (send.deleted_at) throw new Error("This message was already deleted from Telegram.")
+
+    // Superadmins may delete any send. Everyone else only sends they made,
+    // or sends of solicitations they created.
+    // Mirrors canDeleteTelegramSend in src/lib/permissions.ts.
+    if (!(await canDelete(user.id, send))) {
+      return json({ error: "You can only delete Telegram messages you sent, or for events you created." }, 403)
+    }
 
     // Older sends only recorded the text/caption message id
     const ids: number[] = (send.message_ids?.length ? send.message_ids : [send.message_id])
@@ -102,6 +108,30 @@ serve(async (req) => {
     return json({ error: error.message }, 400)
   }
 })
+
+async function canDelete(
+  userId: string,
+  send: { sent_by: string | null; solicitation_id: string | null }
+): Promise<boolean> {
+  if (send.sent_by === userId) return true
+
+  const { data: profile, error: profileError } = await supabase!
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle()
+  if (profileError) throw profileError
+  if (profile?.role === 'superadmin') return true
+
+  if (!send.solicitation_id) return false
+  const { data: solicitation, error: solicitationError } = await supabase!
+    .from('solicitations')
+    .select('created_by')
+    .eq('id', send.solicitation_id)
+    .maybeSingle()
+  if (solicitationError) throw solicitationError
+  return solicitation?.created_by === userId
+}
 
 function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body), {

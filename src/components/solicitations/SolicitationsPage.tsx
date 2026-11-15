@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import {
   fetchPaginatedSolicitations,
   fetchSolicitation,
+  findSolicitationPage,
   deleteSolicitation,
   updateSolicitation,
   type Solicitation,
@@ -134,12 +135,27 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
     }
   }, [storageKey, searchQuery, filters, sortBy])
 
-  // Debounce search
+  // Debounce search (a new search goes back to page 1)
   const [debouncedSearch, setDebouncedSearch] = useState(stored?.search ?? '')
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300)
+    if (searchQuery === debouncedSearch) return
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setCurrentPage(1)
+    }, 300)
     return () => clearTimeout(timer)
-  }, [searchQuery])
+  }, [searchQuery, debouncedSearch])
+
+  // Filter/sort changes go back to page 1. Done in the setters rather than an effect
+  // so that jumping to a linked record can set filters and page together.
+  const changeFilters = (next: SolicitationFilters) => {
+    setFilters(next)
+    setCurrentPage(1)
+  }
+  const changeSort = (next: string) => {
+    setSortBy(next)
+    setCurrentPage(1)
+  }
 
   // Sheet states
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -150,6 +166,8 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
   
   const [searchParams, setSearchParams] = useSearchParams()
   const [initialViewId, setInitialViewId] = useState<string | null>(() => searchParams.get('id'))
+  // Row to scroll to once the page holding it has loaded
+  const [scrollToId, setScrollToId] = useState<string | null>(null)
 
   // ── Server-side paginated data loading ──
   const loadData = useCallback(async (showLoading = true) => {
@@ -194,37 +212,80 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
     loadData()
   }, [loadData])
 
-  // Reset page when filters change (not when page changes)
+  // Handle URL id (from the dashboard / Telegram log): open the record and show its row
   useEffect(() => {
-    setCurrentPage(1)
-  }, [debouncedSearch, filters, sortBy])
+    if (!initialViewId || loading) return
+    const id = initialViewId
+    setInitialViewId(null)
 
-  // Handle URL id — fetch the specific record if needed
-  useEffect(() => {
-    if (initialViewId && !loading) {
-      const found = solicitations.find(s => s.id === initialViewId)
-      if (found) {
-        setViewingSolicitation(found)
-        setTimeout(() => {
-          const row = document.getElementById(`row-${initialViewId}`)
-          if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }, 100)
-      } else {
-        // Record not on current page — fetch it directly
-        fetchSolicitation(initialViewId).then(s => {
-          setViewingSolicitation(s)
-        }).catch(() => {
-          toast.error('Could not find the requested solicitation')
-        })
-      }
+    // Clean up URL
+    const newParams = new URLSearchParams(searchParams)
+    newParams.delete('id')
+    setSearchParams(newParams, { replace: true })
 
-      // Clean up URL
-      const newParams = new URLSearchParams(searchParams)
-      newParams.delete('id')
-      setSearchParams(newParams, { replace: true })
-      setInitialViewId(null)
+    const found = solicitations.find(s => s.id === id)
+    if (found) {
+      setViewingSolicitation(found)
+      setScrollToId(id)
+      return
     }
-  }, [initialViewId, solicitations, loading, searchParams, setSearchParams])
+
+    // Not on the current page: find the page it is on, clearing filters if they hide it
+    ;(async () => {
+      try {
+        const record = await fetchSolicitation(id)
+        setViewingSolicitation(record)
+
+        const scope = { showHistory, sortBy }
+        const current = {
+          ...scope,
+          includeHistory: !showHistory && filters.includeHistory,
+          search: debouncedSearch,
+          types: filters.types,
+          statuses: filters.statuses,
+          colors: filters.colors,
+          dateField: filters.dateField,
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined,
+        }
+        const page = await findSolicitationPage(record, current, PAGE_SIZE)
+        if (page) {
+          setCurrentPage(page)
+          setScrollToId(id)
+          return
+        }
+
+        // Filters hide it: clear them (on Solicits, include history if the record is Done/Discontinued)
+        const isHistory = ['Done', 'Discontinued'].includes(record.status ?? '')
+        const cleared = { ...EMPTY_FILTERS, includeHistory: !showHistory && isHistory }
+        const clearedPage = await findSolicitationPage(
+          record,
+          { ...scope, includeHistory: cleared.includeHistory },
+          PAGE_SIZE
+        )
+        if (!clearedPage) {
+          toast.info(`This solicitation is in ${isHistory ? 'History' : 'Solicits'}, not this tab`)
+          return
+        }
+        setSearchQuery('')
+        setDebouncedSearch('')
+        setFilters(cleared)
+        setCurrentPage(clearedPage)
+        setScrollToId(id)
+        toast.info('Filters cleared to show this solicitation')
+      } catch {
+        toast.error('Could not find the requested solicitation')
+      }
+    })()
+  }, [initialViewId, solicitations, loading, searchParams, setSearchParams, showHistory, sortBy, filters, debouncedSearch])
+
+  useEffect(() => {
+    if (!scrollToId || loading || !solicitations.some(s => s.id === scrollToId)) return
+    setScrollToId(null)
+    setTimeout(() => {
+      document.getElementById(`row-${scrollToId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 100)
+  }, [scrollToId, loading, solicitations])
 
   const typeOptions = useMemo(() => {
     const config = fieldConfigs.find((c) => c.field_name === 'type')
@@ -390,7 +451,7 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
 
   const clearAllFilters = () => {
     setSearchQuery('')
-    setFilters(EMPTY_FILTERS)
+    changeFilters(EMPTY_FILTERS)
   }
 
   return (
@@ -433,9 +494,9 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
 
             <SolicitationFilterBar
               filters={filters}
-              onChange={setFilters}
+              onChange={changeFilters}
               sortBy={sortBy}
-              onSortChange={setSortBy}
+              onSortChange={changeSort}
               typeOptions={typeOptions}
               statusOptions={showingAll ? allStatusOptions : filterStatusOptions}
               colorMappings={colorMappings}

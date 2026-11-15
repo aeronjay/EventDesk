@@ -182,88 +182,78 @@ const localDayStartISO = (dateKey: string, addDays = 0) => {
   return new Date(y, m - 1, d + addDays).toISOString()
 }
 
+export type SolicitationQueryOptions = Omit<FetchPaginatedOptions, 'page' | 'pageSize'>
+
+const sortSpec = (sortBy = 'event_asc') => {
+  let column = 'event_date'
+  if (sortBy.startsWith('received')) column = 'date_received'
+  else if (sortBy.startsWith('created')) column = 'created_at'
+  return { column, ascending: sortBy.endsWith('_asc') }
+}
+
+// Base query with the tab scope, filters and search applied (no sort or range)
+function buildFilteredQuery(opts: SolicitationQueryOptions, isCount: boolean) {
+  const { showHistory, includeHistory, search, types, statuses, colors, dateField, dateFrom, dateTo } = opts
+
+  let q = isCount
+    ? supabase.from('solicitations').select('*', { count: 'exact', head: true })
+    : supabase.from('solicitations').select('*')
+
+  // History vs Active filter
+  if (includeHistory) {
+    // all solicitations
+  } else if (showHistory) {
+    q = q.in('status', ['Done', 'Discontinued'])
+  } else {
+    q = q.not('status', 'in', '("Done","Discontinued")')
+  }
+
+  if (types?.length) q = q.in('type', types)
+  if (statuses?.length) q = q.in('status', statuses)
+
+  if (colors?.length) {
+    const labels = colors.filter((c) => c !== NO_COLOR_FILTER)
+    const parts: string[] = []
+    if (labels.length) parts.push(`control_number_color.in.(${labels.map(quoteFilterValue).join(',')})`)
+    if (colors.includes(NO_COLOR_FILTER)) parts.push('control_number_color.is.null', 'control_number_color.eq.')
+    q = q.or(parts.join(','))
+  }
+
+  // Date range on one of the date columns
+  if (dateField === 'created') {
+    // created_at is a timestamp: compare against local day boundaries
+    if (dateFrom) q = q.gte('created_at', localDayStartISO(dateFrom))
+    if (dateTo) q = q.lt('created_at', localDayStartISO(dateTo, 1))
+  } else if (dateField) {
+    const column = dateField === 'event' ? 'event_date' : 'date_received'
+    if (dateFrom) q = q.gte(column, dateFrom)
+    if (dateTo) q = q.lte(column, dateTo)
+  }
+
+  // Search filter — use OR across multiple columns
+  if (search && search.trim()) {
+    const term = `%${search.trim()}%`
+    q = q.or(
+      `organization_name.ilike.${term},control_number.ilike.${term},event.ilike.${term},contact_person.ilike.${term},venue.ilike.${term}`
+    )
+  }
+
+  return q
+}
+
 export async function fetchPaginatedSolicitations(opts: FetchPaginatedOptions): Promise<PaginatedResult> {
-  const {
-    page,
-    pageSize,
-    showHistory,
-    includeHistory,
-    search,
-    types,
-    statuses,
-    colors,
-    sortBy = 'event_asc',
-    dateField,
-    dateFrom,
-    dateTo,
-  } = opts
-
-  // Determine sort column and direction
-  let sortColumn = 'event_date'
-  let ascending = true
-  if (sortBy.startsWith('received')) {
-    sortColumn = 'date_received'
-  } else if (sortBy.startsWith('created')) {
-    sortColumn = 'created_at'
-  }
-  ascending = sortBy.endsWith('_asc')
-
-  // ── Build the base query for count ──
-  const buildQuery = (isCount: boolean) => {
-    let q = isCount
-      ? supabase.from('solicitations').select('*', { count: 'exact', head: true })
-      : supabase.from('solicitations').select('*')
-
-    // History vs Active filter
-    if (includeHistory) {
-      // all solicitations
-    } else if (showHistory) {
-      q = q.in('status', ['Done', 'Discontinued'])
-    } else {
-      q = q.not('status', 'in', '("Done","Discontinued")')
-    }
-
-    if (types?.length) q = q.in('type', types)
-    if (statuses?.length) q = q.in('status', statuses)
-
-    if (colors?.length) {
-      const labels = colors.filter((c) => c !== NO_COLOR_FILTER)
-      const parts: string[] = []
-      if (labels.length) parts.push(`control_number_color.in.(${labels.map(quoteFilterValue).join(',')})`)
-      if (colors.includes(NO_COLOR_FILTER)) parts.push('control_number_color.is.null', 'control_number_color.eq.')
-      q = q.or(parts.join(','))
-    }
-
-    // Date range on one of the date columns
-    if (dateField === 'created') {
-      // created_at is a timestamp: compare against local day boundaries
-      if (dateFrom) q = q.gte('created_at', localDayStartISO(dateFrom))
-      if (dateTo) q = q.lt('created_at', localDayStartISO(dateTo, 1))
-    } else if (dateField) {
-      const column = dateField === 'event' ? 'event_date' : 'date_received'
-      if (dateFrom) q = q.gte(column, dateFrom)
-      if (dateTo) q = q.lte(column, dateTo)
-    }
-
-    // Search filter — use OR across multiple columns
-    if (search && search.trim()) {
-      const term = `%${search.trim()}%`
-      q = q.or(
-        `organization_name.ilike.${term},control_number.ilike.${term},event.ilike.${term},contact_person.ilike.${term},venue.ilike.${term}`
-      )
-    }
-
-    return q
-  }
+  const { page, pageSize } = opts
+  const { column, ascending } = sortSpec(opts.sortBy)
 
   // Run count + data queries in parallel
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
   const [countResult, dataResult] = await Promise.all([
-    buildQuery(true),
-    buildQuery(false)
-      .order(sortColumn, { ascending, nullsFirst: false })
+    buildFilteredQuery(opts, true),
+    buildFilteredQuery(opts, false)
+      .order(column, { ascending, nullsFirst: false })
+      .order('id', { ascending: true }) // tie-breaker so rows with equal dates keep a stable page
       .range(from, to),
   ])
 
@@ -274,6 +264,33 @@ export async function fetchPaginatedSolicitations(opts: FetchPaginatedOptions): 
     data: (dataResult.data ?? []) as Solicitation[],
     totalCount: countResult.count ?? 0,
   }
+}
+
+// Which page a solicitation lands on for the given filters and sort,
+// or null when the filters exclude it. Mirrors the ordering in fetchPaginatedSolicitations.
+export async function findSolicitationPage(
+  record: Solicitation,
+  opts: SolicitationQueryOptions,
+  pageSize: number
+): Promise<number | null> {
+  const matchRes = await buildFilteredQuery(opts, true).eq('id', record.id)
+  if (matchRes.error) throw matchRes.error
+  if (!matchRes.count) return null
+
+  const { column, ascending } = sortSpec(opts.sortBy)
+  const value = record[column as keyof Solicitation] as string | null
+  const id = quoteFilterValue(record.id)
+
+  // Rows ordered before this one: earlier sort value, or same value and a lower id.
+  // Nulls sort last, so a non-null value is never preceded by a null.
+  const before = value == null
+    ? `${column}.not.is.null,and(${column}.is.null,id.lt.${id})`
+    : `${column}.${ascending ? 'lt' : 'gt'}.${quoteFilterValue(value)},and(${column}.eq.${quoteFilterValue(value)},id.lt.${id})`
+
+  const beforeRes = await buildFilteredQuery(opts, true).or(before)
+  if (beforeRes.error) throw beforeRes.error
+
+  return Math.floor((beforeRes.count ?? 0) / pageSize) + 1
 }
 
 // ── Single record ──

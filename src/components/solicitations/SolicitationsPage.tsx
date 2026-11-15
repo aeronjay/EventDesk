@@ -8,7 +8,7 @@ import {
   type Solicitation,
 } from '@/lib/solicitations'
 import { fetchFieldConfigs, type FieldConfig } from '@/lib/fieldConfigs'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -27,19 +27,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import { Label } from '@/components/ui/label'
-import {
   Plus,
   Search,
   MoreHorizontal,
@@ -49,17 +36,41 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
-  Filter,
+  X,
   Paperclip,
 } from 'lucide-react'
 import { SolicitationDialog } from './SolicitationDialog.tsx'
 import { SolicitationDetailPanel } from './SolicitationDetailPanel.tsx'
 import { DeleteDialog } from './DeleteDialog.tsx'
+import { SolicitationFilterBar } from './SolicitationFilterBar.tsx'
+import { EMPTY_FILTERS, DEFAULT_SORT, countActiveFilters, type SolicitationFilters } from './solicitationFilters'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 import { canDeleteSolicitation } from '@/lib/permissions'
 
 const PAGE_SIZE = 25
+
+// Filters are remembered per tab (Solicits / History) for the browser session
+interface StoredView {
+  search: string
+  filters: SolicitationFilters
+  sortBy: string
+}
+
+const loadStoredView = (key: string): StoredView | null => {
+  try {
+    const raw = sessionStorage.getItem(key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<StoredView>
+    return {
+      search: parsed.search ?? '',
+      filters: { ...EMPTY_FILTERS, ...parsed.filters },
+      sortBy: parsed.sortBy ?? DEFAULT_SORT,
+    }
+  } catch {
+    return null
+  }
+}
 
 const formatEventTime = (time?: string | null) => {
   if (!time) return null;
@@ -107,23 +118,24 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
   const [totalCount, setTotalCount] = useState(0)
   const [fieldConfigs, setFieldConfigs] = useState<FieldConfig[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [filterType, setFilterType] = useState<string>('all')
-  const [filterStatus, setFilterStatus] = useState<string>('all')
-  
-  const [eventDateFrom, setEventDateFrom] = useState<string>('')
-  const [eventDateTo, setEventDateTo] = useState<string>('')
-  const [receivedDateFrom, setReceivedDateFrom] = useState<string>('')
-  const [receivedDateTo, setReceivedDateTo] = useState<string>('')
-  const [createdDateFrom, setCreatedDateFrom] = useState<string>('')
-  const [createdDateTo, setCreatedDateTo] = useState<string>('')
-  const [sortBy, setSortBy] = useState<string>('event_asc')
-  
+  const storageKey = `qsolicit:view:${showHistory ? 'history' : 'active'}`
+  const [stored] = useState(() => loadStoredView(storageKey))
+  const [searchQuery, setSearchQuery] = useState(stored?.search ?? '')
+  const [filters, setFilters] = useState<SolicitationFilters>(stored?.filters ?? EMPTY_FILTERS)
+  const [sortBy, setSortBy] = useState<string>(stored?.sortBy ?? DEFAULT_SORT)
+
   const [currentPage, setCurrentPage] = useState(1)
-  const [filterOpen, setFilterOpen] = useState(false)
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify({ search: searchQuery, filters, sortBy }))
+    } catch {
+      // storage unavailable — filters just won't be remembered
+    }
+  }, [storageKey, searchQuery, filters, sortBy])
 
   // Debounce search
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState(stored?.search ?? '')
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300)
     return () => clearTimeout(timer)
@@ -148,16 +160,15 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
           page: currentPage,
           pageSize: PAGE_SIZE,
           showHistory,
+          includeHistory: !showHistory && filters.includeHistory,
           search: debouncedSearch,
-          filterType,
-          filterStatus,
+          types: filters.types,
+          statuses: filters.statuses,
+          colors: filters.colors,
           sortBy,
-          eventDateFrom: eventDateFrom || undefined,
-          eventDateTo: eventDateTo || undefined,
-          receivedDateFrom: receivedDateFrom || undefined,
-          receivedDateTo: receivedDateTo || undefined,
-          createdDateFrom: createdDateFrom || undefined,
-          createdDateTo: createdDateTo || undefined,
+          dateField: filters.dateField,
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined,
         }),
         fetchFieldConfigs(),
       ])
@@ -176,7 +187,7 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
     } finally {
       if (showLoading) setLoading(false)
     }
-  }, [currentPage, showHistory, debouncedSearch, filterType, filterStatus, sortBy, eventDateFrom, eventDateTo, receivedDateFrom, receivedDateTo, createdDateFrom, createdDateTo])
+  }, [currentPage, showHistory, debouncedSearch, filters, sortBy])
 
   // Reload data when any filter/page changes
   useEffect(() => {
@@ -186,7 +197,7 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
   // Reset page when filters change (not when page changes)
   useEffect(() => {
     setCurrentPage(1)
-  }, [debouncedSearch, filterType, filterStatus, sortBy, eventDateFrom, eventDateTo, receivedDateFrom, receivedDateTo, createdDateFrom, createdDateTo])
+  }, [debouncedSearch, filters, sortBy])
 
   // Handle URL id — fetch the specific record if needed
   useEffect(() => {
@@ -225,12 +236,20 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
     return config?.options ?? []
   }, [fieldConfigs])
 
+  const colorMappings = useMemo(
+    () => fieldConfigs.find((c) => c.field_name === 'control_number')?.color_mappings ?? [],
+    [fieldConfigs]
+  )
+
   const filterStatusOptions = useMemo(() => {
     return allStatusOptions.filter(o => {
       const isHistory = ['Done', 'Discontinued'].includes(o)
       return showHistory ? isHistory : !isHistory
     })
   }, [allStatusOptions, showHistory])
+
+  // "All" scope on the Solicits tab: active and history together
+  const showingAll = !showHistory && filters.includeHistory
 
   // Pagination computed values
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
@@ -239,6 +258,15 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
     setEditingSolicitation(null)
     setSheetOpen(true)
   }
+
+  // `?new=1` (from the dashboard) opens the create dialog directly
+  useEffect(() => {
+    if (searchParams.get('new') !== '1') return
+    handleAdd()
+    const newParams = new URLSearchParams(searchParams)
+    newParams.delete('new')
+    setSearchParams(newParams, { replace: true })
+  }, [searchParams, setSearchParams])
 
   const handleEdit = (s: Solicitation) => {
     setEditingSolicitation(s)
@@ -321,7 +349,8 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
          setViewingSolicitation(updated)
       }
 
-      const isMovedToHistory = !showHistory && ['Done', 'Discontinued'].includes(newStatus)
+      // In the "All" scope the row stays on screen, so there is nothing to move
+      const isMovedToHistory = !showHistory && !showingAll && ['Done', 'Discontinued'].includes(newStatus)
       const isMovedToActive = showHistory && !['Done', 'Discontinued'].includes(newStatus)
 
       if (isMovedToHistory || isMovedToActive) {
@@ -357,15 +386,12 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
     }
   }
 
-  const hasEventFilter = eventDateFrom !== '' || eventDateTo !== ''
-  const hasReceivedFilter = receivedDateFrom !== '' || receivedDateTo !== ''
-  const hasCreatedFilter = createdDateFrom !== '' || createdDateTo !== ''
+  const hasActiveFilters = countActiveFilters(filters) > 0 || searchQuery.trim() !== ''
 
-  const disableEvent = hasReceivedFilter || hasCreatedFilter
-  const disableReceived = hasEventFilter || hasCreatedFilter
-  const disableCreated = hasEventFilter || hasReceivedFilter
-
-  const hasActiveFilters = filterType !== 'all' || filterStatus !== 'all' || hasEventFilter || hasReceivedFilter || hasCreatedFilter || sortBy !== 'event_asc' || searchQuery.trim() !== ''
+  const clearAllFilters = () => {
+    setSearchQuery('')
+    setFilters(EMPTY_FILTERS)
+  }
 
   return (
     <div className="flex flex-col h-full p-6 min-h-0">
@@ -375,157 +401,49 @@ export default function SolicitationsPage({ showHistory = false }: { showHistory
         {/* Left Column (Header + Search + Table) */}
         <div className="flex flex-col flex-1 min-w-0 min-h-0 gap-4 sm:gap-6">
           
-          {/* Search + Filters bar */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-          <Input
-            id="search-solicitations"
-            placeholder="Search by name, control no., event…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8"
-          />
-        </div>
-
-
-
-        <Popover open={filterOpen} onOpenChange={setFilterOpen}>
-          <PopoverTrigger className={buttonVariants({ variant: 'outline', className: 'gap-2' })}>
-            <Filter size={16} />
-            Filters
-            {(filterType !== 'all' || filterStatus !== 'all' || hasEventFilter || hasReceivedFilter || hasCreatedFilter || sortBy !== 'event_asc') && (
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5 rounded-sm">Active</Badge>
-            )}
-          </PopoverTrigger>
-          <PopoverContent className="w-[320px] p-4" align="start">
-            <div className="space-y-4 max-h-[70vh] overflow-y-auto">
-              <h4 className="font-semibold leading-none mb-3">Filters & Sorting</h4>
-
-              <div className="space-y-2">
-                <Label>Sort By</Label>
-                <Select value={sortBy} onValueChange={(v) => v && setSortBy(v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="event_asc">Event Date (Ascending)</SelectItem>
-                    <SelectItem value="event_desc">Event Date (Descending)</SelectItem>
-                    <SelectItem value="received_asc">Date Received (Ascending)</SelectItem>
-                    <SelectItem value="received_desc">Date Received (Descending)</SelectItem>
-                    <SelectItem value="created_asc">Date Created (Ascending)</SelectItem>
-                    <SelectItem value="created_desc">Date Created (Descending)</SelectItem>
-                  </SelectContent>
-                </Select>
+          {/* Search + filters */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                <Input
+                  id="search-solicitations"
+                  placeholder="Search organization, control no., event, contact, venue…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-9 pl-9 pr-8"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    aria-label="Clear search"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
-
-              <div className="space-y-2">
-                <Label>Type</Label>
-                <Select value={filterType} onValueChange={(v) => v && setFilterType(v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Types" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    {typeOptions.map((opt) => (
-                      <SelectItem key={opt} value={opt}>
-                        {opt}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select value={filterStatus} onValueChange={(v) => v && setFilterStatus(v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Statuses" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    {filterStatusOptions.map((opt) => (
-                      <SelectItem key={opt} value={opt}>
-                        {opt}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className={`space-y-2 p-3 border rounded-md ${disableEvent ? 'opacity-50 pointer-events-none' : ''}`}>
-                <Label>Event Date Range</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input type="date" value={eventDateFrom} onChange={(e) => setEventDateFrom(e.target.value)} title="From" />
-                  <Input type="date" value={eventDateTo} onChange={(e) => setEventDateTo(e.target.value)} title="To" />
-                </div>
-              </div>
-
-              <div className={`space-y-2 p-3 border rounded-md ${disableReceived ? 'opacity-50 pointer-events-none' : ''}`}>
-                <Label>Date Received Range</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input type="date" value={receivedDateFrom} onChange={(e) => setReceivedDateFrom(e.target.value)} title="From" />
-                  <Input type="date" value={receivedDateTo} onChange={(e) => setReceivedDateTo(e.target.value)} title="To" />
-                </div>
-              </div>
-
-              <div className={`space-y-2 p-3 border rounded-md ${disableCreated ? 'opacity-50 pointer-events-none' : ''}`}>
-                <Label>Date Created Range</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input type="date" value={createdDateFrom} onChange={(e) => setCreatedDateFrom(e.target.value)} title="From" />
-                  <Input type="date" value={createdDateTo} onChange={(e) => setCreatedDateTo(e.target.value)} title="To" />
-                </div>
-              </div>
-
-              <Button 
-                variant="outline" 
-                className="w-full mt-4"
-                onClick={() => {
-                  setFilterType('all')
-                  setFilterStatus('all')
-                  setEventDateFrom('')
-                  setEventDateTo('')
-                  setReceivedDateFrom('')
-                  setReceivedDateTo('')
-                  setCreatedDateFrom('')
-                  setCreatedDateTo('')
-                  setSortBy('event_asc')
-                }}
-              >
-                Reset Filters
-              </Button>
+              {!showHistory && (
+                <Button onClick={handleAdd} className="ml-auto gap-2 shrink-0">
+                  <Plus size={16} />
+                  <span className="hidden sm:inline">Add Solicitation</span>
+                </Button>
+              )}
             </div>
-          </PopoverContent>
-        </Popover>
 
-        {hasActiveFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setSearchQuery('')
-              setFilterType('all')
-              setFilterStatus('all')
-              setEventDateFrom('')
-              setEventDateTo('')
-              setReceivedDateFrom('')
-              setReceivedDateTo('')
-              setCreatedDateFrom('')
-              setCreatedDateTo('')
-              setSortBy('event_asc')
-            }}
-            className="text-muted-foreground"
-          >
-            Clear all
-          </Button>
-        )}
-        {!showHistory && (
-          <Button onClick={handleAdd} className="gap-2 shrink-0 sm:ml-auto">
-            <Plus size={16} />
-            Add Solicitation
-          </Button>
-        )}
-      </div>
+            <SolicitationFilterBar
+              filters={filters}
+              onChange={setFilters}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              typeOptions={typeOptions}
+              statusOptions={showingAll ? allStatusOptions : filterStatusOptions}
+              colorMappings={colorMappings}
+              showScope={!showHistory}
+              onClearAll={clearAllFilters}
+              canClearAll={hasActiveFilters}
+            />
+          </div>
 
       {/* Table Container */}
       <div className="rounded-xl border border-border bg-card flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">

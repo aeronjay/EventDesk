@@ -85,6 +85,37 @@ export async function fetchDashboardCounts(): Promise<DashboardCounts> {
   return { total, active, completed, discontinued }
 }
 
+// ── Dashboard: how many solicitations (active + history) carry each control number color ──
+export interface ColorCounts {
+  byLabel: Record<string, number> // keyed by color_mappings label
+  other: number // a color value that no longer matches any mapping
+  none: number // no color set
+  total: number
+}
+
+export async function fetchControlNumberColorCounts(labels: string[]): Promise<ColorCounts> {
+  const head = () => supabase.from('solicitations').select('*', { count: 'exact', head: true })
+
+  const [totalRes, coloredRes, ...labelRes] = await Promise.all([
+    head(),
+    head().not('control_number_color', 'is', null).neq('control_number_color', ''),
+    ...labels.map((label) => head().eq('control_number_color', label)),
+  ])
+
+  for (const res of [totalRes, coloredRes, ...labelRes]) {
+    if (res.error) throw res.error
+  }
+
+  const byLabel: Record<string, number> = {}
+  labels.forEach((label, i) => (byLabel[label] = labelRes[i].count ?? 0))
+
+  const total = totalRes.count ?? 0
+  const colored = coloredRes.count ?? 0
+  const matched = Object.values(byLabel).reduce((a, b) => a + b, 0)
+
+  return { byLabel, other: Math.max(0, colored - matched), none: total - colored, total }
+}
+
 // ── Dashboard: events within a date window (today ± days) ──
 // Only fetches the columns needed for the dashboard cards
 const DASHBOARD_EVENT_COLUMNS = 'id,type,control_number,organization_name,event,event_date,event_time,request,status,date_received,contact_person' as const
@@ -122,20 +153,33 @@ export interface PaginatedResult {
   totalCount: number
 }
 
+// Sentinel used in a color filter to match solicitations with no control number color
+export const NO_COLOR_FILTER = '__none__'
+
+export type DateFilterField = 'event' | 'received' | 'created'
+
 export interface FetchPaginatedOptions {
   page: number
   pageSize: number
   showHistory: boolean
+  includeHistory?: boolean // ignore the active/history split and search everything
   search?: string
-  filterType?: string
-  filterStatus?: string
+  types?: string[]
+  statuses?: string[]
+  colors?: string[] // color_mappings labels, and/or NO_COLOR_FILTER
   sortBy?: string
-  eventDateFrom?: string
-  eventDateTo?: string
-  receivedDateFrom?: string
-  receivedDateTo?: string
-  createdDateFrom?: string
-  createdDateTo?: string
+  dateField?: DateFilterField
+  dateFrom?: string // YYYY-MM-DD, inclusive
+  dateTo?: string // YYYY-MM-DD, inclusive
+}
+
+// Quote a value for use inside a PostgREST `in.(...)` list
+const quoteFilterValue = (v: string) => `"${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+
+// Start of a local calendar day as an ISO timestamp (for timestamptz columns)
+const localDayStartISO = (dateKey: string, addDays = 0) => {
+  const [y, m, d] = dateKey.split('-').map(Number)
+  return new Date(y, m - 1, d + addDays).toISOString()
 }
 
 export async function fetchPaginatedSolicitations(opts: FetchPaginatedOptions): Promise<PaginatedResult> {
@@ -143,16 +187,15 @@ export async function fetchPaginatedSolicitations(opts: FetchPaginatedOptions): 
     page,
     pageSize,
     showHistory,
+    includeHistory,
     search,
-    filterType,
-    filterStatus,
+    types,
+    statuses,
+    colors,
     sortBy = 'event_asc',
-    eventDateFrom,
-    eventDateTo,
-    receivedDateFrom,
-    receivedDateTo,
-    createdDateFrom,
-    createdDateTo,
+    dateField,
+    dateFrom,
+    dateTo,
   } = opts
 
   // Determine sort column and direction
@@ -172,41 +215,34 @@ export async function fetchPaginatedSolicitations(opts: FetchPaginatedOptions): 
       : supabase.from('solicitations').select('*')
 
     // History vs Active filter
-    if (showHistory) {
+    if (includeHistory) {
+      // all solicitations
+    } else if (showHistory) {
       q = q.in('status', ['Done', 'Discontinued'])
     } else {
       q = q.not('status', 'in', '("Done","Discontinued")')
     }
 
-    // Type filter
-    if (filterType && filterType !== 'all') {
-      q = q.eq('type', filterType)
+    if (types?.length) q = q.in('type', types)
+    if (statuses?.length) q = q.in('status', statuses)
+
+    if (colors?.length) {
+      const labels = colors.filter((c) => c !== NO_COLOR_FILTER)
+      const parts: string[] = []
+      if (labels.length) parts.push(`control_number_color.in.(${labels.map(quoteFilterValue).join(',')})`)
+      if (colors.includes(NO_COLOR_FILTER)) parts.push('control_number_color.is.null', 'control_number_color.eq.')
+      q = q.or(parts.join(','))
     }
 
-    // Status filter
-    if (filterStatus && filterStatus !== 'all') {
-      q = q.eq('status', filterStatus)
-    }
-
-    // Date range filters (only one category active at a time, same as current UI logic)
-    if (eventDateFrom) {
-      q = q.gte('event_date', eventDateFrom)
-    }
-    if (eventDateTo) {
-      q = q.lte('event_date', eventDateTo)
-    }
-    if (receivedDateFrom) {
-      q = q.gte('date_received', receivedDateFrom)
-    }
-    if (receivedDateTo) {
-      q = q.lte('date_received', receivedDateTo)
-    }
-    if (createdDateFrom) {
-      q = q.gte('created_at', createdDateFrom)
-    }
-    if (createdDateTo) {
-      // Add end-of-day for created_at since it's a timestamp
-      q = q.lte('created_at', createdDateTo + 'T23:59:59.999Z')
+    // Date range on one of the date columns
+    if (dateField === 'created') {
+      // created_at is a timestamp: compare against local day boundaries
+      if (dateFrom) q = q.gte('created_at', localDayStartISO(dateFrom))
+      if (dateTo) q = q.lt('created_at', localDayStartISO(dateTo, 1))
+    } else if (dateField) {
+      const column = dateField === 'event' ? 'event_date' : 'date_received'
+      if (dateFrom) q = q.gte(column, dateFrom)
+      if (dateTo) q = q.lte(column, dateTo)
     }
 
     // Search filter — use OR across multiple columns
